@@ -33,6 +33,23 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 						int ret = DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_OPTIONS), hMainDlg, OptionsDlgProc);
 					}
 					break;
+				case IDB_MODE:
+					{
+						HWND hBMode = GetDlgItem(hwnd,IDB_MODE);
+						HWND hBSync = GetDlgItem(hwnd,IDB_SYNCNOW);
+						if(AutoSync == 1) {
+							EnableWindow(hBSync,TRUE);
+							SendMessage(hBMode, WM_SETTEXT, 0, (LPARAM)"Automatic Mode");
+							AutoSync = 0; /* Manual mode */
+						} else {
+							EnableWindow(hBSync,FALSE);
+							SendMessage(hBMode, WM_SETTEXT, 0, (LPARAM)"Manual Mode");
+							AutoSync = 1; /* Auto mode */	
+						}
+						CloseHandle(hBMode);
+						CloseHandle(hBSync);					 	
+					}
+					break;		
 	
 			}
 			break;
@@ -53,6 +70,17 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 
 BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam) {
 	switch(Message) {
+		case WM_INITDIALOG:
+			{
+				HWND hPNextSync = GetDlgItem(hwnd,IDP_NEXTSYNC);
+				SendMessage(hPNextSync, PBM_SETRANGE, 0, (LPARAM)MAKELPARAM(0, 4)); 
+				SendMessage(hPNextSync, PBM_SETPOS, (WPARAM)3, 0); 
+				
+				HWND hPSyncStatus = GetDlgItem(hwnd,IDP_SYNCSTATUS);
+				SendMessage(hPSyncStatus, PBM_SETRANGE, 0, (LPARAM)MAKELPARAM(0, 100)); 
+				SendMessage(hPSyncStatus, PBM_SETPOS, (WPARAM)100, 0); 
+			}
+			break;		
 		case WM_COMMAND:
 			switch(LOWORD(wParam)) {
 				case IDB_OK:

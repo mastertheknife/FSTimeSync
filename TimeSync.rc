@@ -20,19 +20,21 @@ FONT 8, "Ms Shell Dlg 2"
 {
     CONTROL         "", IDP_NEXTSYNC, PROGRESS_CLASS, WS_VISIBLE, 5, 120, 188, 13
 	LTEXT           "FS Time Sync v1.0 by mastertheknife", IDC_STATIC, 5, 140, 120, 8, SS_LEFT
-    LTEXT           "Flight Simulator Status: Not Running", IDC_STATIC, 5, 6, 125, 8, SS_LEFT
-    LTEXT           "Operation Mode: Automatic", IDC_STATIC, 5, 58, 89, 8, SS_LEFT
-    LTEXT           "Next synchronization in 2 seconds.", IDC_STATIC, 5, 109, 116, 8, WS_VISIBLE | SS_LEFT
-    LTEXT           "Flight Simulator UTC Time: ", IDC_STATIC, 5, 19, 86, 8, SS_LEFT
-    LTEXT           "System UTC Time:", IDC_STATIC, 5, 32, 59, 8, SS_LEFT
-    LTEXT           "Synchronization status: 100% sychnorized", IDC_STATIC, 5, 45, 134, 8, SS_LEFT
+    LTEXT           "Flight Simulator Status: Not Running", IDC_STATIC, 5, 6, 186, 8, SS_LEFT
+    LTEXT           "Operation Mode:", IDC_STATIC, 5, 58, 55, 8, SS_LEFT
+    LTEXT   		"Automatic", IDT_OPERMODE, 65, 58, 50, 8, SS_LEFT
+    LTEXT           "Manual synchronization is not possible in Automatic mode.", IDT_NOMANUAL, 5, 67, 186, 8, WS_VISIBLE | SS_LEFT    
+    LTEXT           "Next synchronization in 2 seconds.", IDC_STATIC, 5, 109, 186, 8, WS_VISIBLE | SS_LEFT
+    LTEXT           "Last synchronized at 12:55:22 PM", IDC_STATIC, 5, 98, 186, 8, SS_LEFT    
+    LTEXT           "Flight Simulator UTC Time: ", IDC_STATIC, 5, 19, 186, 8, SS_LEFT
+    LTEXT           "System UTC Time:", IDC_STATIC, 5, 32, 186, 8, SS_LEFT
+    LTEXT           "Synchronization status: 100% sychnorized", IDC_STATIC, 5, 45, 140, 8, SS_LEFT
     CONTROL         "", IDP_SYNCSTATUS, PROGRESS_CLASS, WS_VISIBLE, 153, 45, 40, 9
     PUSHBUTTON      "Options", IDB_OPTIONS, 4, 80, 32, 14, WS_TABSTOP | BS_PUSHBUTTON
     PUSHBUTTON      "Sync Now", IDB_SYNCNOW, 38, 80, 96, 14, WS_TABSTOP | BS_PUSHBUTTON
     PUSHBUTTON      "Manual Mode", IDB_MODE, 136, 80, 58, 14, WS_TABSTOP | BS_PUSHBUTTON
     DEFPUSHBUTTON   "OK", IDB_OK, 144, 137, 50, 14, BS_DEFPUSHBUTTON    
-    LTEXT           "Manual synchronization is not possible in Automatic mode.", IDC_STATIC, 5, 67, 186, 8, WS_VISIBLE | SS_LEFT
-    LTEXT           "Last synchronized at 12:55:22 PM", IDC_STATIC, 5, 98, 116, 8, SS_LEFT
+
 }
 
 LANGUAGE LANG_ENGLISH, SUBLANG_NEUTRAL
@@ -49,7 +51,7 @@ FONT 8, "Ms Shell Dlg 2"
     GROUPBOX        "Automatic synchronization", IDC_STATIC, 5, 53, 196, 61    
     AUTOCHECKBOX    "Enable at startup", IDC_CHECKBOX1, 11, 65, 71, 10, WS_TABSTOP | BS_AUTOCHECKBOX    
 	LTEXT           "Synchronization Interval:", IDC_STATIC, 11, 82, 54, 8, SS_LEFT
-    COMBOBOX        IDL_UPDATEINT, 111, 79, 86, 12, WS_TABSTOP | CBS_DROPDOWNLIST | CBS_HASSTRINGS	
+    COMBOBOX        IDL_SYNCINT, 111, 79, 86, 12, WS_TABSTOP | CBS_DROPDOWNLIST | CBS_HASSTRINGS	
     LTEXT           "Enable/Disable Hotkey:", IDC_STATIC, 11, 99, 75, 8, SS_LEFT    
 	CONTROL         "", IDH_AUTOUPHOTKEY1, HOTKEY_CLASS, WS_TABSTOP, 111, 97, 86, 12
     PUSHBUTTON      "Defaults", IDB_DEFAULTS, 5, 119, 35, 14, WS_TABSTOP | BS_PUSHBUTTON

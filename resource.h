@@ -5,7 +5,7 @@
 #define IDD_OPTIONS                             103
 #define IDD_MAIN                                105
 #define IDP_SYNCSTATUS                          1002
-#define IDL_UPDATEINT                           1004
+#define IDL_SYNCINT 	  	                    1004
 #define IDH_AUTOUPHOTKEY1                       1006
 #define IDC_CHECKBOX1                           1007
 #define IDC_CHECKBOX2                           1008
@@ -19,3 +19,5 @@
 #define IDB_SYNCNOW								1101
 #define IDB_MODE								1102
 #define IDB_OPTIONS								1103
+#define IDT_NOMANUAL							1104
+#define IDT_OPERMODE							1105	

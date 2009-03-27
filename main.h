@@ -3,6 +3,6 @@
 #include "globalinc.h"
 #include "debug.h"
 
-
+extern unsigned int AutoSync;
 
 #endif

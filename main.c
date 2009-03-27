@@ -5,6 +5,8 @@
 #include "sync.h"
 #include "registry.h"
 
+unsigned int AutoSync = 1;
+
 int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpszArgument, int nCmdShow) {
 
 	/* Modules startup */
