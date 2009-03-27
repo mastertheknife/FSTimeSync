@@ -33,7 +33,7 @@ int DebugStartup(void) {
 	debugfile = fopen("fstimesync.log","w");
 	setvbuf (debugfile, NULL, _IONBF,0);
 	debuglog(DEBUG_ALL,"Debug log opened.\n"); 
-	DebugSetMask(DEBUG_DEFAULTLEVEL);	
+	DebugSetMask(DEBUG_ALL);	
 }		
 
 int DebugShutdown(void) {

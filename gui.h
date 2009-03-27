@@ -8,5 +8,9 @@ BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPar
 BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam);
 
 static DWORD WINAPI GUIThreadProc(LPVOID lpParameter);
+int GUIStartup(void);
+int GUIShutdown(void);
+int GUIStartThread(BOOL bStartMinimized);
+
 
 #endif

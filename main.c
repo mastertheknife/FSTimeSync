@@ -9,15 +9,16 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 
 	/* Modules startup */
 	DebugStartup();
-	RegistryStartup();
+	// RegistryStartup();
  	GUIStartup();
 
-	 		
+	GUIStartThread(1);	
 			 		
-
+	while(1)
+	Sleep(50);
     
     GUIShutdown();
-    RegistryShutdown();
+    // RegistryShutdown();
     DebugShutdown();
 
     return 0;

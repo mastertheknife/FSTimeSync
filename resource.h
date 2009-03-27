@@ -3,6 +3,8 @@
 #endif
 
 #define IDD_OPTIONS                             103
+#define IDD_MAIN                                105
+#define IDP_SYNCSTATUS                          1002
 #define IDL_UPDATEINT                           1004
 #define IDH_AUTOUPHOTKEY1                       1006
 #define IDC_CHECKBOX1                           1007
@@ -12,4 +14,8 @@
 #define IDH_MANUPHOTKEY                         1014
 #define IDB_OK                                  1050
 #define IDB_CANCEL                              1051
-#define IDB_DEFAULTS                            1052
+#define IDB_DEFAULTS                            1100
+#define IDP_NEXTSYNC							1055
+#define IDB_SYNCNOW								1101
+#define IDB_MODE								1102
+#define IDB_OPTIONS								1103
