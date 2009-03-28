@@ -10,6 +10,7 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 int GUIStartup(void);
 int GUIShutdown(void);
 int GUIStartThread(int nCmdShow);
+int GUIStopThread();
 
 static void GUIOperModeDraw(HWND hwnd, unsigned int AutoMode);
 static void GUISetDialogIcon(HWND hwnd);

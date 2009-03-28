@@ -10,7 +10,7 @@
 static HWND hMainDlg = NULL;
 static HWND hDummyWindow = NULL;
 
-static HANDLE hThread = NULL;
+static HANDLE hGUIThread = NULL;
 static SyncOptions PendingSettings;
 static HICON hIcon;
 static HICON hIconSm;
@@ -27,7 +27,6 @@ LRESULT CALLBACK TrayProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM lParam) 
 					MessageBox(hwnd,"Right click detected\n","FS Time Sync",MB_OK);
 					break;
 				case WM_USER:
-					debuglog(DEBUG_CAPTURE,"Left click detected on icon\n");
 					if(hMainDlg == NULL) {
 						/* Window doesn't exist, let's create it */
 						hTemphwnd = CreateDialog(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_MAIN), NULL, MainDlgProc);
@@ -52,7 +51,6 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 	switch(Message) {
 		case WM_INITDIALOG:
 			{
-				
 				/* Set the icon for this dialog */
 				GUISetDialogIcon(hwnd);
 				
@@ -226,12 +224,6 @@ DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 		debuglog(DEBUG_ERROR,"Creating dummy window failed\n");
 	}
 	
-	/* Find out if to start minimized or not. */
-	
-	/* Creating the main window */
-	hMainDlg = CreateDialog(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_MAIN), NULL, MainDlgProc);
-	ShowWindow(hMainDlg,(int)lpParameter);
-	
 	/* Setting up the tray icon properties */
 	ZeroMemory(&TrayIconData,sizeof(NOTIFYICONDATA));
 	TrayIconData.cbSize = sizeof(NOTIFYICONDATA);
@@ -241,7 +233,6 @@ DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 	TrayIconData.hIcon = hIcon;
 	TrayIconData.uCallbackMessage = TRAYICONMSG;	
 	TrayIconData.uVersion = NOTIFYICON_VERSION; /* Windows 2000 or later */
-	/* TrayIconData.dwStateMask = NIS_HIDDEN; */
 	
 	if(AutoSync == 1)
 		sprintf(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Automatic\nInterval: %u seconds",10);
@@ -258,19 +249,25 @@ DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 	}	
 	TrayIconState = 1; /* Tray icon ready */
 
+	/* Creating the main window, unless start minimized is enabled */
+	if((int)lpParameter == SW_MINIMIZE) {
+		hMainDlg = NULL; 
+	} else {
+		hMainDlg = CreateDialog(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_MAIN), NULL, MainDlgProc);
+		ShowWindow(hMainDlg,(int)lpParameter);
+	}
 			
 	/* Message Loop! */
 	/* Run the message loop. It will run until GetMessage() returns 0 */
     while (GetMessage (&Message, NULL, 0, 0)) {
 		if(!IsDialogMessage(hMainDlg, &Message)) {	
-			debuglog(DEBUG_CAPTURE,"This part got called!\n");	
 			/* Translate virtual-key messages into character messages */
 			TranslateMessage(&Message);
 			/* Send message to WindowProcedure */
 			DispatchMessage(&Message);
 		}
     }
-	
+    
 	/* Removing the tray icon */
 	TrayIconState = 0;
 	if(!Shell_NotifyIcon(NIM_DELETE,&TrayIconData)) {
@@ -278,7 +275,11 @@ DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 	}	
 		
 	/* Kill all windows and return */
-	ExitProcess(0);
+	DestroyWindow(hDummyWindow);
+	if(hMainDlg != NULL) 
+		DestroyWindow(hMainDlg);
+		
+	return 1;	
 }
 
 int GUIStartup(void) {
@@ -290,10 +291,10 @@ int GUIStartup(void) {
 	
 	if(hIcon == NULL)
 		debuglog(DEBUG_ERROR,"Failed to load big 32x32 icon!\n");
-		
+
 	if(hIconSm == NULL)
 		debuglog(DEBUG_ERROR,"Failed to load small 16x16 icon!\n");	
-			
+	
 	return 1;	
 }
 
@@ -307,10 +308,32 @@ int GUIShutdown(void) {
 }
 
 int GUIStartThread(int nCmdShow) {
-	hThread = CreateThread(NULL,0,GUIThreadProc,(LPVOID)nCmdShow,0,NULL);
-	debuglog(DEBUG_CAPTURE,"Thread created\n");
+
+	hGUIThread = CreateThread(NULL,0,GUIThreadProc,(LPVOID)nCmdShow,0,NULL);
+	if(hGUIThread) {
+		debuglog(DEBUG_INFO,"Successfully created GUI thread\n");
+	} else {
+		debuglog(DEBUG_ERROR,"Failed creating GUI thread\n");
+		return 0;
+	}	
 	return 1;
 }
+
+int GUIStopThread() {
+	DWORD nRet;
+	
+	debuglog(DEBUG_INFO,"Stopping GUI Thread\n");
+	
+	/* Wait for the GUI thread to finish, up to 1 second */
+	nRet = WaitForSingleObject(hGUIThread,1000000);
+	
+	if(nRet == WAIT_FAILED) {
+		debuglog(DEBUG_NOTICE,"GUI thread didn't close with WaitForSingleObject, Terminating it..\n");
+		TerminateThread(hGUIThread,200);
+	}
+	return 1;
+}
+	
 
 void GUIOperModeDraw(HWND hwnd, unsigned int AutoMode) {	
 	HWND hBSync = GetDlgItem(hwnd,IDB_SYNCNOW);

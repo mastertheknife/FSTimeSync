@@ -13,32 +13,35 @@ volatile unsigned int bQuit; /* If set to 1, program exists */
 
 int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpszArgument, int nCmdShow) {
 
-	/* Modules startup */
+	/* Initialize the critical section and perform startup */
+	InitializeCriticalSection(&SettingsCS);
 	DebugStartup();
 	RegistryStartup();
  	GUIStartup();
- 	
- 	Settings.AutoSyncInterval = 10;
+
+	/* Load settings from registry */
+	Settings.AutoSyncInterval = 10;
  	Settings.UTCOffsetState = 1;
  	Settings.UTCOffset = -60;
  	Settings.AutoOnStartup = 1;
- 	Settings.StartMinimized = 0;
-
-	/* Initialize the critical section protecting the options and settings! */
-	InitializeCriticalSection(&SettingsCS);
-	
-	/* Load settings from registry */
+ 	Settings.StartMinimized = 1;
 	
 	/* Start the GUI Thread */
 	if(Settings.StartMinimized == 1)
-	GUIStartThread(SW_MINIMIZE);
+		GUIStartThread(SW_MINIMIZE);
 	else	
-	GUIStartThread(nCmdShow);	
+		GUIStartThread(nCmdShow);	
 			 		
-	while(1)
-	Sleep(50);
-    
-    GUIShutdown();
+	while(!bQuit) {
+		Sleep(50);
+	}
+	
+	/* Stop the GUI thread, or at least wait for it to close */
+	GUIStopThread();
+	
+	/* Delete the critical section and perform complete shutdown */	
+	DeleteCriticalSection(&SettingsCS);		
+	GUIShutdown();
     RegistryShutdown();
     DebugShutdown();
 
