@@ -15,8 +15,13 @@ typedef struct tagSyncOptions {
 
 extern SyncOptions Settings; /* The options! */
 extern SyncOptions Defaults; /* Default options */
+extern CRITICAL_SECTION SettingsCS; /* Critical section to protect the Settings structure */
 
-extern unsigned int AutoSync; /* Runtime setting controlling manual or auto mode */
-extern CRITICAL_SECTION SettingsCS; /* Critical section to protect the options structure */
+int SetOperMode(unsigned int bAuto);
+int GetOperMode();
+
+int RegisterHotkeys(HWND hwnd, WORD ManSync, WORD OperModeSwitch);
+
+static unsigned int bAutoSync; /* Runtime setting controlling manual or auto mode */
 extern volatile unsigned int bQuit;
 #endif

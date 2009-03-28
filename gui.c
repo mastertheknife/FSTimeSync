@@ -19,7 +19,7 @@ static NOTIFYICONDATA TrayIconData;
 static unsigned int TrayIconState;
 
 
-LRESULT CALLBACK TrayProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM lParam) {
+LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM lParam) {
 	HWND hTemphwnd;
     switch(Message)
     {
@@ -43,6 +43,14 @@ LRESULT CALLBACK TrayProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM lParam) 
 					break;				
 			}
         	break;
+        case WM_HOTKEY:
+			if(wParam == 443)
+				MessageBox(hMainDlg,"Received 443 HOTKEY (MANUAL SYNC)","FS Time Sync",MB_OK);
+			else if(wParam == 444)
+				MessageBox(hMainDlg,"Received 444 HOTKEY (MODE SWITCH)","FS Time Sync",MB_OK);
+			else
+				MessageBox(hMainDlg,"UNKNOWN HOTKEY","FS Time Sync",MB_OK);
+			break;
 		default:
 			return DefWindowProc(hwnd, Message, wParam, lParam);
     }
@@ -56,18 +64,12 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 				/* Set the icon for this dialog */
 				GUISetDialogIcon(hwnd);
 				
-				/* Lock settings */			
-				EnterCriticalSection(&SettingsCS);
-				
 				/* Create the draw timer */
 				hDrawTimer = SetTimer(hwnd,4231,250,NULL);
 								
 				/* Draw the dialog operating modee (Auto or manual) */
-				if(AutoSync == 1) {
-					GUIOperModeDraw(hwnd,1);
-				} else {
-					GUIOperModeDraw(hwnd,0);
-				}	
+				GUIOperModeDraw(hwnd,GetOperMode());
+
 				/* Draw the other elements */
 				GUIElementsDraw(hwnd);
 							
@@ -75,9 +77,7 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 				SendDlgItemMessage(hwnd,IDP_NEXTSYNC, PBM_SETPOS, (WPARAM)3, 0); 
 				SendDlgItemMessage(hwnd,IDP_SYNCSTATUS, PBM_SETRANGE, 0, (LPARAM)MAKELPARAM(0, 100)); 
 				SendDlgItemMessage(hwnd,IDP_SYNCSTATUS, PBM_SETPOS, (WPARAM)100, 0); 
-				
-				/* Release settings */
-				LeaveCriticalSection(&SettingsCS);
+			
 			}
 			break;
 		case WM_TIMER:
@@ -97,11 +97,11 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 				case IDB_MODE:
 					{
 						/* Operating Mode changed. Update the runtime setting and modify the dialog depending on the new mode */
-						if(AutoSync == 1) {
-							AutoSync = 0;
+						if(GetOperMode()) {
+							SetOperMode(FALSE);
 							GUIOperModeDraw(hwnd,0);
 						} else {
-							AutoSync = 1;
+							SetOperMode(TRUE);
 							GUIOperModeDraw(hwnd,1);
 						}											 	
 					}
@@ -127,12 +127,10 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 				PostQuitMessage(0); /* Quit */
 			break;
 		case WM_SYSCOMMAND:
-			switch(wParam) {
-				case SC_MINIMIZE:
-					DestroyWindow(hwnd);
-					break;
-				default:
-					return FALSE;
+			if(wParam == SC_MINIMIZE) {
+				DestroyWindow(hwnd);
+			} else {
+				return FALSE;
 			}			
 			break;		
 		default:
@@ -149,18 +147,29 @@ BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPar
 				/* Set the icon for this dialog */
 				GUISetDialogIcon(hwnd);
 				
-				/* Enter critical section */
+				/* Copy the settings from main to here */
+				EnterCriticalSection(&SettingsCS);
 				CopySettings(&PendingSettings,&Settings);
-				/* Leave it */
+				LeaveCriticalSection(&SettingsCS);
 				
+				/* Load the options from the structure into the dialog */
 				GUIOptionsDraw(hwnd,&PendingSettings);
-										
 			}
 			break;		
 		case WM_COMMAND:
 			switch(LOWORD(wParam)) {
 				case IDB_OK:
-					/* Save Settings here! */
+					/* Save the options from the dialog into the structure */
+					GUIOptionsSave(hwnd,&PendingSettings);
+
+					/* Copy them to main settings */
+					EnterCriticalSection(&SettingsCS);
+					CopySettings(&Settings,&PendingSettings);
+					LeaveCriticalSection(&SettingsCS);
+					
+					/* TODO: Save to registry */
+
+					/* Close the options dialog */
 					EndDialog(hwnd,IDB_OK);
 					break;
 				case IDB_CANCEL:
@@ -169,7 +178,18 @@ BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPar
 				case IDB_DEFAULTS:
 					CopySettings(&PendingSettings,&Defaults);
 					GUIOptionsDraw(hwnd,&PendingSettings);
-					break;				
+					break;
+				case IDC_UTCOFFSET:
+					{
+						HWND hEUTCOffset = GetDlgItem(hwnd,IDE_UTCOFFSET);		
+						if(SendDlgItemMessage(hwnd,IDC_UTCOFFSET,BM_GETCHECK,0,0) == BST_CHECKED) {
+							EnableWindow(hEUTCOffset,TRUE);
+						} else {
+							EnableWindow(hEUTCOffset,FALSE);
+						}
+						CloseHandle(hEUTCOffset);
+					}
+					break;		
 				default:
 					return FALSE;					
 			}
@@ -194,7 +214,7 @@ DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 	wcex.cbSize         = sizeof(wcex);
 	wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
 	wcex.style          = 0;
-	wcex.lpfnWndProc    = TrayProc;
+	wcex.lpfnWndProc    = TraynHotkeysProc;
 	wcex.hInstance      = hInst;
 	wcex.lpszClassName  = "DUMMYWINDOWFORTRAYNOTIFICATIONS";
 	RegisterClassEx(&wcex);
@@ -214,7 +234,7 @@ DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 	TrayIconData.uCallbackMessage = TRAYICONMSG;	
 	TrayIconData.uVersion = NOTIFYICON_VERSION; /* Windows 2000 or later */
 	
-	if(AutoSync == 1)
+	if(GetOperMode())
 		sprintf(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Automatic\nInterval: %u seconds",10);
 	else
 		strcpy(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Manual");	
@@ -228,6 +248,9 @@ DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 		debuglog(DEBUG_ERROR,"Failed setting tray icon version!\n");
 	}	
 	TrayIconState = 1; /* Tray icon ready */
+	
+	/* Register the hotkeys */
+	RegisterHotkeys(hDummyWindow, MAKEWORD(VK_F6,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)), MAKEWORD(VK_F7,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)));
 
 	/* Creating the main window, unless start minimized is enabled */
 	if((int)lpParameter == SW_MINIMIZE) {
@@ -356,6 +379,7 @@ void GUIOperModeDraw(HWND hwnd, unsigned int AutoMode) {
 	
 }
 
+/* Loads the options from the structure into the dialog */
 void GUIOptionsDraw(HWND hwnd,SyncOptions* Sets) {
 	HWND hEUTCOffset = GetDlgItem(hwnd,IDE_UTCOFFSET);	
 	
@@ -365,6 +389,26 @@ void GUIOptionsDraw(HWND hwnd,SyncOptions* Sets) {
 	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"10 seconds");			
 	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"30 seconds");
 	
+	if(Sets->StartMinimized == 1)
+		SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
+	else
+		SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
+		
+	if(Sets->UTCOffsetState == 1) {
+		SendDlgItemMessage(hwnd,IDC_UTCOFFSET,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
+		SetDlgItemInt(hwnd,IDE_UTCOFFSET,Sets->UTCOffset,TRUE);
+		EnableWindow(hEUTCOffset,TRUE);						
+	} else {
+		SendDlgItemMessage(hwnd,IDC_UTCOFFSET,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
+		SetDlgItemInt(hwnd,IDE_UTCOFFSET,Sets->UTCOffset,TRUE);	
+		EnableWindow(hEUTCOffset,FALSE);		
+	}	
+	
+	if(Sets->AutoOnStartup == 1)
+		SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
+	else
+		SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);																	
+			
 	switch(Sets->AutoSyncInterval) {
 		case 3:
 			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)0,0);
@@ -383,29 +427,49 @@ void GUIOptionsDraw(HWND hwnd,SyncOptions* Sets) {
 			break;			
 	}
 	
-	if(Sets->AutoOnStartup == 1)
-		SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
-	else
-		SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);																	
-				
-	if(Sets->UTCOffsetState == 1) {
-		SendDlgItemMessage(hwnd,IDC_UTCOFFSET,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
-		SetDlgItemInt(hwnd,IDE_UTCOFFSET,Sets->UTCOffset,TRUE);
-		EnableWindow(hEUTCOffset,TRUE);						
-	} else {
-		SendDlgItemMessage(hwnd,IDC_UTCOFFSET,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
-		SetDlgItemInt(hwnd,IDE_UTCOFFSET,Sets->UTCOffset,TRUE);	
-		EnableWindow(hEUTCOffset,FALSE);		
-	}		
-	
-	if(Sets->StartMinimized == 1)
-		SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
-	else
-		SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
-		
 	CloseHandle(hEUTCOffset);	
 }
+
+/* Saves the options from the dialog into the structure */
+void GUIOptionsSave(HWND hwnd,SyncOptions* Sets) {
+	if(SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_GETCHECK,0,0) == BST_CHECKED)
+		Sets->StartMinimized = 1;
+	else
+		Sets->StartMinimized = 0;
+		
+	if(SendDlgItemMessage(hwnd,IDC_UTCOFFSET,BM_GETCHECK,0,0) == BST_CHECKED) {
+		Sets->UTCOffsetState = 1;
+		Sets->UTCOffset = GetDlgItemInt(hwnd,IDE_UTCOFFSET,NULL,TRUE);
+	} else {
+		Sets->UTCOffsetState = 0;
+		Sets->UTCOffset = GetDlgItemInt(hwnd,IDE_UTCOFFSET,NULL,TRUE);	
+	}
+			
+	if(SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_GETCHECK,0,0) == BST_CHECKED)
+		Sets->AutoOnStartup = 1;
+	else
+		Sets->AutoOnStartup = 0;			
+		
+	switch(SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_GETCURSEL,0,0)) {
+		case 0:
+			Sets->AutoSyncInterval = 3;
+			break;
+		case 1:
+			Sets->AutoSyncInterval = 5;
+			break;
+		case 2:	
+			Sets->AutoSyncInterval = 10;
+			break;
+		case 3:
+			Sets->AutoSyncInterval = 30;
+			break;
+		default:
+			Sets->AutoSyncInterval = 10;
+			break;			
+	}
 	
+	
+}
 
 void GUISetDialogIcon(HWND hwnd) {
 	SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
