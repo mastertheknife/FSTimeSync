@@ -8,7 +8,7 @@
 #define IDP_SYNCSTATUS                          1002
 #define IDL_SYNCINT 	  	                    1004
 #define IDH_AUTOUPHOTKEY1                       1006
-#define IDC_CHECKBOX1                           1007
+#define IDC_AUTOSYNCSTARTUP       		        1007
 #define IDC_STARTMINIMIZED                      1008
 #define IDC_UTCOFFSET                           1011
 #define IDE_UTCOFFSET                           1012

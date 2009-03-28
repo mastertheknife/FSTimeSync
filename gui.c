@@ -1,5 +1,5 @@
 #define _WIN32_IE 0x0500
-#define TRAYICONMSG 4231
+#define TRAYICONMSG WM_USER+2
 #include "globalinc.h"
 #include "debug.h"
 #include "gui.h"
@@ -11,11 +11,13 @@ static HWND hMainDlg = NULL;
 static HWND hDummyWindow = NULL;
 
 static HANDLE hGUIThread = NULL;
+static UINT_PTR hDrawTimer;
 static SyncOptions PendingSettings;
 static HICON hIcon;
 static HICON hIconSm;
 static NOTIFYICONDATA TrayIconData;
 static unsigned int TrayIconState;
+
 
 LRESULT CALLBACK TrayProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM lParam) {
 	HWND hTemphwnd;
@@ -57,12 +59,17 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 				/* Lock settings */			
 				EnterCriticalSection(&SettingsCS);
 				
-				/* Modify the dialog for the current operating mode (Auto or manual) */
+				/* Create the draw timer */
+				hDrawTimer = SetTimer(hwnd,4231,250,NULL);
+								
+				/* Draw the dialog operating modee (Auto or manual) */
 				if(AutoSync == 1) {
 					GUIOperModeDraw(hwnd,1);
 				} else {
 					GUIOperModeDraw(hwnd,0);
 				}	
+				/* Draw the other elements */
+				GUIElementsDraw(hwnd);
 							
 				SendDlgItemMessage(hwnd,IDP_NEXTSYNC, PBM_SETRANGE, 0, (LPARAM)MAKELPARAM(0, 4)); 
 				SendDlgItemMessage(hwnd,IDP_NEXTSYNC, PBM_SETPOS, (WPARAM)3, 0); 
@@ -73,6 +80,9 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 				LeaveCriticalSection(&SettingsCS);
 			}
 			break;
+		case WM_TIMER:
+			GUIElementsDraw(hwnd);
+			break;	
 		case WM_COMMAND:
 			switch(LOWORD(wParam)) {
 				case IDB_OK:
@@ -105,11 +115,13 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 			break;
 		case WM_CLOSE:
 			if(MessageBox(hwnd,"Are you sure you want to quit?","FS Time Sync",MB_YESNO | MB_DEFBUTTON2 | MB_ICONQUESTION) == IDYES) {
+				/* Signal WM_DESTROY that we are quitting */
 				bQuit = 1;
 				DestroyWindow(hwnd);
 			}	
 			break;
 		case WM_DESTROY:
+			hDrawTimer = KillTimer(hwnd,4231);		
 			hMainDlg = NULL; /* To mark that this window is closed */
 			if(bQuit == 1)
 				PostQuitMessage(0); /* Quit */
@@ -133,52 +145,16 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam) {
 	switch(Message) {
 		case WM_INITDIALOG:
-			{
-				HWND hEUTCOffset = GetDlgItem(hwnd,IDE_UTCOFFSET);	
-				
+			{				
 				/* Set the icon for this dialog */
 				GUISetDialogIcon(hwnd);
 				
-				memcpy(&PendingSettings,&Settings,sizeof(SyncOptions));
-								
-				SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"3 seconds");				
-				SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"5 seconds");
-				SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"10 seconds");			
-				SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"30 seconds");
-				switch(PendingSettings.AutoSyncInterval) {
-					case 3:
-						SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)0,0);
-						break;
-					case 5:
-						SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)1,0);
-						break;
-					case 10:	
-						SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)2,0);
-						break;
-					case 30:
-						SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)3,0);
-						break;
-					default:
-						SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)2,0);
-						break;			
-				}
+				/* Enter critical section */
+				CopySettings(&PendingSettings,&Settings);
+				/* Leave it */
 				
-				if(PendingSettings.StartMinimized == 1)
-					SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
-				else
-					SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);																											
-				
-				if(PendingSettings.UTCOffsetState == 1) {
-					SendDlgItemMessage(hwnd,IDC_UTCOFFSET,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
-					SetDlgItemInt(hwnd,IDE_UTCOFFSET,PendingSettings.UTCOffset,TRUE);
-					EnableWindow(hEUTCOffset,TRUE);						
-				} else {
-					SendDlgItemMessage(hwnd,IDC_UTCOFFSET,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
-					SetDlgItemInt(hwnd,IDE_UTCOFFSET,PendingSettings.UTCOffset,TRUE);	
-					EnableWindow(hEUTCOffset,FALSE);		
-				}	
-				CloseHandle(hEUTCOffset);		
-						
+				GUIOptionsDraw(hwnd,&PendingSettings);
+										
 			}
 			break;		
 		case WM_COMMAND:
@@ -189,7 +165,11 @@ BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPar
 					break;
 				case IDB_CANCEL:
 					EndDialog(hwnd,IDB_OK);
-					break;	
+					break;
+				case IDB_DEFAULTS:
+					CopySettings(&PendingSettings,&Defaults);
+					GUIOptionsDraw(hwnd,&PendingSettings);
+					break;				
 				default:
 					return FALSE;					
 			}
@@ -325,7 +305,7 @@ int GUIStopThread() {
 	debuglog(DEBUG_INFO,"Stopping GUI Thread\n");
 	
 	/* Wait for the GUI thread to finish, up to 1 second */
-	nRet = WaitForSingleObject(hGUIThread,1000000);
+	nRet = WaitForSingleObject(hGUIThread,1000);
 	
 	if(nRet == WAIT_FAILED) {
 		debuglog(DEBUG_NOTICE,"GUI thread didn't close with WaitForSingleObject, Terminating it..\n");
@@ -334,6 +314,9 @@ int GUIStopThread() {
 	return 1;
 }
 	
+void GUIElementsDraw(HWND hwnd) {
+	debuglog(DEBUG_CAPTURE,"Timer event!\n");
+}	
 
 void GUIOperModeDraw(HWND hwnd, unsigned int AutoMode) {	
 	HWND hBSync = GetDlgItem(hwnd,IDB_SYNCNOW);
@@ -372,6 +355,57 @@ void GUIOperModeDraw(HWND hwnd, unsigned int AutoMode) {
 	CloseHandle(hPNextSync);	
 	
 }
+
+void GUIOptionsDraw(HWND hwnd,SyncOptions* Sets) {
+	HWND hEUTCOffset = GetDlgItem(hwnd,IDE_UTCOFFSET);	
+	
+	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_RESETCONTENT,0,0);
+	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"3 seconds");				
+	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"5 seconds");
+	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"10 seconds");			
+	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"30 seconds");
+	
+	switch(Sets->AutoSyncInterval) {
+		case 3:
+			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)0,0);
+			break;
+		case 5:
+			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)1,0);
+			break;
+		case 10:	
+			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)2,0);
+			break;
+		case 30:
+			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)3,0);
+			break;
+		default:
+			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)2,0);
+			break;			
+	}
+	
+	if(Sets->AutoOnStartup == 1)
+		SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
+	else
+		SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);																	
+				
+	if(Sets->UTCOffsetState == 1) {
+		SendDlgItemMessage(hwnd,IDC_UTCOFFSET,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
+		SetDlgItemInt(hwnd,IDE_UTCOFFSET,Sets->UTCOffset,TRUE);
+		EnableWindow(hEUTCOffset,TRUE);						
+	} else {
+		SendDlgItemMessage(hwnd,IDC_UTCOFFSET,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
+		SetDlgItemInt(hwnd,IDE_UTCOFFSET,Sets->UTCOffset,TRUE);	
+		EnableWindow(hEUTCOffset,FALSE);		
+	}		
+	
+	if(Sets->StartMinimized == 1)
+		SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
+	else
+		SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
+		
+	CloseHandle(hEUTCOffset);	
+}
+	
 
 void GUISetDialogIcon(HWND hwnd) {
 	SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
