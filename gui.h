@@ -7,11 +7,12 @@
 BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam);
 BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam);
 
-static DWORD WINAPI GUIThreadProc(LPVOID lpParameter);
 int GUIStartup(void);
 int GUIShutdown(void);
 int GUIStartThread(int nCmdShow);
-void GUIOperModeDraw(HWND hwnd, unsigned int AutoMode);
 
+static void GUIOperModeDraw(HWND hwnd, unsigned int AutoMode);
+static void GUISetDialogIcon(HWND hwnd);
+static DWORD WINAPI GUIThreadProc(LPVOID lpParameter);
 
 #endif

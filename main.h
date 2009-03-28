@@ -16,5 +16,5 @@ typedef struct tagSyncOptions {
 extern SyncOptions Settings; /* The options! */
 extern unsigned int AutoSync; /* Runtime setting controlling manual or auto mode */
 extern CRITICAL_SECTION SettingsCS; /* Critical section to protect the options structure */
-
+extern volatile unsigned int bQuit;
 #endif

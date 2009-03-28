@@ -9,6 +9,7 @@
 SyncOptions Settings; /* The options! */
 unsigned int AutoSync; /* Runtime setting controlling manual or auto mode */
 CRITICAL_SECTION SettingsCS; /* Critical section to protect the options structure */
+volatile unsigned int bQuit; /* If set to 1, program exists */
 
 int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpszArgument, int nCmdShow) {
 
@@ -21,7 +22,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
  	Settings.UTCOffsetState = 1;
  	Settings.UTCOffset = -60;
  	Settings.AutoOnStartup = 1;
- 	Settings.StartMinimized = 1;
+ 	Settings.StartMinimized = 0;
 
 	/* Initialize the critical section protecting the options and settings! */
 	InitializeCriticalSection(&SettingsCS);

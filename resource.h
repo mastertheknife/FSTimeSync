@@ -2,6 +2,7 @@
 #define IDC_STATIC (-1)
 #endif
 
+#define IDI_ICON								1
 #define IDD_OPTIONS                             103
 #define IDD_MAIN                                105
 #define IDP_SYNCSTATUS                          1002
