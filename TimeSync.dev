@@ -1,7 +1,7 @@
 [Project]
 FileName=TimeSync.dev
 Name=TimeSync
-UnitCount=12
+UnitCount=13
 Type=0
 Ver=1
 ObjFiles=
@@ -158,6 +158,16 @@ BuildCmd=
 
 [Unit12]
 FileName=debug.c
+CompileCpp=0
+Folder=TimeSync
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit13]
+FileName=globalinc.h
 CompileCpp=0
 Folder=TimeSync
 Compile=1

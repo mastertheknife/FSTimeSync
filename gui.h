@@ -10,7 +10,8 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 static DWORD WINAPI GUIThreadProc(LPVOID lpParameter);
 int GUIStartup(void);
 int GUIShutdown(void);
-int GUIStartThread(BOOL bStartMinimized);
+int GUIStartThread(int nCmdShow);
+void GUIOperModeDraw(HWND hwnd, unsigned int AutoMode);
 
 
 #endif
