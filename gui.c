@@ -46,10 +46,24 @@ LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM 
         case WM_HOTKEY:
 			if(wParam == 443)
 				MessageBox(hMainDlg,"Received 443 HOTKEY (MANUAL SYNC)","FS Time Sync",MB_OK);
-			else if(wParam == 444)
-				MessageBox(hMainDlg,"Received 444 HOTKEY (MODE SWITCH)","FS Time Sync",MB_OK);
-			else
-				MessageBox(hMainDlg,"UNKNOWN HOTKEY","FS Time Sync",MB_OK);
+			else if(wParam == 444) {
+				/* If automatic, change to manual and vice versa. */
+				if(GetOperMode()) {
+					SetOperMode(FALSE);
+					/* If the dialog exists, redraw will also update the tray,
+					   But if it doesn't, we have to update the tray ourselves */
+					if(hMainDlg)
+						GUIOperModeDraw(hMainDlg,0);
+					else
+						GUITrayUpdate();							
+				} else {
+					SetOperMode(TRUE);					
+					if(hMainDlg)
+						GUIOperModeDraw(hMainDlg,1);
+					else
+						GUITrayUpdate();	
+				}	
+			}	
 			break;
 		default:
 			return DefWindowProc(hwnd, Message, wParam, lParam);
@@ -161,6 +175,10 @@ BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPar
 				case IDB_OK:
 					/* Save the options from the dialog into the structure */
 					GUIOptionsSave(hwnd,&PendingSettings);
+					
+					/* Update the hotkeys by re-registering them */
+					HotkeysUnregister(hDummyWindow);
+					HotkeysRegister(hDummyWindow,PendingSettings.ManSyncHotkey,PendingSettings.ModeSwitchHotkey);					
 
 					/* Copy them to main settings */
 					EnterCriticalSection(&SettingsCS);
@@ -250,7 +268,7 @@ DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 	TrayIconState = 1; /* Tray icon ready */
 	
 	/* Register the hotkeys */
-	RegisterHotkeys(hDummyWindow, MAKEWORD(VK_F6,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)), MAKEWORD(VK_F7,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)));
+	HotkeysRegister(hDummyWindow, Settings.ManSyncHotkey, Settings.ModeSwitchHotkey);
 
 	/* Creating the main window, unless start minimized is enabled */
 	if((int)lpParameter == SW_MINIMIZE) {
@@ -270,6 +288,9 @@ DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 			DispatchMessage(&Message);
 		}
     }
+    
+    /* Unregistering the hotkeys */
+    HotkeysUnregister(hDummyWindow);
     
 	/* Removing the tray icon */
 	TrayIconState = 0;
@@ -349,7 +370,6 @@ void GUIOperModeDraw(HWND hwnd, unsigned int AutoMode) {
 	if(AutoMode == 1) {
 		char NextSyncMsg[96];
 		sprintf(NextSyncMsg,"Next synchronization in %u seconds.",5);	
-		sprintf(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Automatic\nInterval: %u seconds",10);								
 		EnableWindow(hBSync,FALSE);
 		SetDlgItemText(hwnd,IDB_MODE,"Manual Mode");	
 		SetDlgItemText(hwnd,IDT_OPERMODE,"Automatic");
@@ -357,7 +377,6 @@ void GUIOperModeDraw(HWND hwnd, unsigned int AutoMode) {
 		ShowWindow(hPNextSync,SW_SHOW);								
 		ShowWindow(hTNoManual,SW_SHOW);							
 	} else {
-		strcpy(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Manual");
 		EnableWindow(hBSync,TRUE);
 		SetDlgItemText(hwnd,IDB_MODE,"Automatic Mode");	
 		SetDlgItemText(hwnd,IDT_OPERMODE,"Manual");
@@ -365,14 +384,9 @@ void GUIOperModeDraw(HWND hwnd, unsigned int AutoMode) {
 		ShowWindow(hPNextSync,SW_HIDE);														
 		ShowWindow(hTNoManual,SW_HIDE);							
 	}
+	/* Update the tray icon to the new mode */
+	GUITrayUpdate();
 	
-	/* Only modify the tray icon if it exists. */
-	if(TrayIconState == 1) {
-		if(!Shell_NotifyIcon(NIM_MODIFY,&TrayIconData)) {
-			debuglog(DEBUG_ERROR,"Failed modifying tray icon!\n");
-		}
-	}
-
 	CloseHandle(hBSync);
 	CloseHandle(hTNoManual);
 	CloseHandle(hPNextSync);	
@@ -426,6 +440,14 @@ void GUIOptionsDraw(HWND hwnd,SyncOptions* Sets) {
 			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)2,0);
 			break;			
 	}
+
+	/* Set the rules on the hotkey controls */	
+	SendDlgItemMessage(hwnd,IDH_MANSYNCHOTKEY,HKM_SETRULES,(WPARAM)(DWORD)HKCOMB_NONE,MAKELPARAM((HOTKEYF_CONTROL | HOTKEYF_SHIFT),0));
+	SendDlgItemMessage(hwnd,IDH_OPERMODEHOTKEY,HKM_SETRULES,(WPARAM)(DWORD)HKCOMB_NONE,MAKELPARAM((HOTKEYF_CONTROL | HOTKEYF_SHIFT),0));
+
+	/* Copy the stored hotkeys to the controls */
+	SendDlgItemMessage(hwnd,IDH_MANSYNCHOTKEY,HKM_SETHOTKEY,PendingSettings.ManSyncHotkey,0);
+	SendDlgItemMessage(hwnd,IDH_OPERMODEHOTKEY,HKM_SETHOTKEY,PendingSettings.ModeSwitchHotkey,0);	
 	
 	CloseHandle(hEUTCOffset);	
 }
@@ -468,7 +490,24 @@ void GUIOptionsSave(HWND hwnd,SyncOptions* Sets) {
 			break;			
 	}
 	
+	/* Copy the hotkeys from the controls to the settings */
+	PendingSettings.ManSyncHotkey = SendDlgItemMessage(hwnd,IDH_MANSYNCHOTKEY,HKM_GETHOTKEY,0,0);
+	PendingSettings.ModeSwitchHotkey = SendDlgItemMessage(hwnd,IDH_OPERMODEHOTKEY,HKM_GETHOTKEY,0,0);
 	
+}
+
+void GUITrayUpdate() {
+	if(GetOperMode())
+		sprintf(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Automatic\nInterval: %u seconds",10);
+	else
+		strcpy(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Manual");
+		
+	/* Only modify the tray icon if it exists. */
+	if(TrayIconState == 1) {
+		if(!Shell_NotifyIcon(NIM_MODIFY,&TrayIconData)) {
+			debuglog(DEBUG_ERROR,"Failed modifying tray icon!\n");
+		}
+	}
 }
 
 void GUISetDialogIcon(HWND hwnd) {

@@ -7,12 +7,12 @@
 #define IDD_MAIN                                105
 #define IDP_SYNCSTATUS                          1002
 #define IDL_SYNCINT 	  	                    1004
-#define IDH_AUTOUPHOTKEY1                       1006
+#define IDH_OPERMODEHOTKEY                      1006
 #define IDC_AUTOSYNCSTARTUP       		        1007
 #define IDC_STARTMINIMIZED                      1008
 #define IDC_UTCOFFSET                           1011
 #define IDE_UTCOFFSET                           1012
-#define IDH_MANUPHOTKEY                         1014
+#define IDH_MANSYNCHOTKEY                       1014
 #define IDB_OK                                  1050
 #define IDB_CANCEL                              1051
 #define IDB_DEFAULTS                            1100

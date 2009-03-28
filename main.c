@@ -4,10 +4,11 @@
 #include "gui.h"
 #include "sync.h"
 #include "registry.h"
+#include <windows.h>
 #include <commctrl.h>
 
 /* Globals */
-SyncOptions Settings; /* The options! */
+SyncOptions Settings = {1,0,1,10,0,MAKEWORD(VK_F6,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(VK_F7,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* The options! */
 SyncOptions Defaults = {0,10,1,0,0}; /* Default options for when using the Defaults button */
 CRITICAL_SECTION SettingsCS; /* Critical section to protect the options structure */
 
@@ -28,13 +29,6 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 	RegistryStartup();
  	GUIStartup();
 
-	/* Load settings from registry */
-	Settings.AutoSyncInterval = 10;
- 	Settings.UTCOffsetState = 1;
- 	Settings.UTCOffset = -60;
- 	Settings.AutoOnStartup = 1;
- 	Settings.StartMinimized = 1;
- 	
  	AutoSync = Settings.AutoOnStartup;
 	
 	/* Start the GUI Thread */
@@ -76,7 +70,7 @@ int GetOperMode() {
 
 }
 
-int RegisterHotkeys(HWND hwnd, WORD ManSync, WORD OperModeSwitch) {
+int HotkeysRegister(HWND hwnd, WORD ManSync, WORD OperModeSwitch) {
 	UINT ManSyncModifiers = 0;
 	UINT OperModeSwitchModifiers = 0;
 	UINT ManSyncVk;
@@ -108,3 +102,16 @@ int RegisterHotkeys(HWND hwnd, WORD ManSync, WORD OperModeSwitch) {
 	
 	return 1;
 }
+
+int HotkeysUnregister(HWND hwnd) {
+	if(!(UnregisterHotKey(hwnd, 443)))
+		debuglog(DEBUG_ERROR,"Failed unregistering manual sync hotkey\n");
+		
+	if((UnregisterHotKey(hwnd, 444)))
+		debuglog(DEBUG_ERROR,"Failed unregistering mode switch hotkey\n");	
+	
+	return 1;
+}	
+	
+
+
