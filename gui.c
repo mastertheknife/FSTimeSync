@@ -46,17 +46,10 @@ LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM 
 					}
 					break;
 				case WM_USER:
-					if(hMainDlg == NULL) {
-						/* Window doesn't exist, let's create it */
-						hTemphwnd = CreateDialog(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_MAIN), NULL, MainDlgProc);
-						if(hTemphwnd) {
-							hMainDlg = hTemphwnd;
-							ShowWindow(hMainDlg,SW_SHOW);
-						}
-					} else {
-						/* Window is open, let's make it more clear to the user */
-						return SetForegroundWindow(hMainDlg);
-					}
+					/* Left click on the icon. Create the window
+					   Or bring it to the foreground if it already exists
+					*/
+					GUIOpenMain();
 					break;				
 			}
         	break;
@@ -64,23 +57,38 @@ LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM 
 			if(wParam == 443)
 				MessageBox(hMainDlg,"Received 443 HOTKEY (MANUAL SYNC)","FS Time Sync",MB_OK);
 			else if(wParam == 444) {
-				/* If automatic, change to manual and vice versa. */
-				if(GetOperMode()) {
-					SetOperMode(FALSE);
-					/* If the dialog exists, redraw will also update the tray,
-					   But if it doesn't, we have to update the tray ourselves */
-					if(hMainDlg)
-						GUIOperModeDraw(hMainDlg,0);
-					else
-						GUITrayUpdate();							
-				} else {
-					SetOperMode(TRUE);					
-					if(hMainDlg)
-						GUIOperModeDraw(hMainDlg,1);
-					else
-						GUITrayUpdate();	
-				}	
+				SendMessage(hwnd,WM_COMMAND,MAKEWPARAM(IDM_MODESWITCH,0),0);
 			}	
+			break;
+		case WM_COMMAND:
+			switch(LOWORD(wParam))
+			{
+				case IDM_RESTORE:
+					GUIOpenMain();
+					break;
+				case IDM_MODESWITCH:
+					/* If automatic, change to manual and vice versa. */
+					if(GetOperMode()) {
+						SetOperMode(FALSE);
+						/* If the dialog exists, redraw will also update the tray,
+					   	But if it doesn't, we have to update the tray ourselves */
+						if(hMainDlg)
+							GUIOperModeDraw(hMainDlg,0);
+						else
+							GUITrayUpdate();							
+					} else {
+						SetOperMode(TRUE);					
+						if(hMainDlg)
+							GUIOperModeDraw(hMainDlg,1);
+						else
+							GUITrayUpdate();	
+					}
+					break;
+				case IDM_QUIT:
+					PostQuitMessage(0);
+					bQuit = 1;
+					break;	
+			}
 			break;
 		default:
 			return DefWindowProc(hwnd, Message, wParam, lParam);
@@ -524,6 +532,21 @@ void GUITrayUpdate() {
 		if(!Shell_NotifyIcon(NIM_MODIFY,&TrayIconData)) {
 			debuglog(DEBUG_ERROR,"Failed modifying tray icon!\n");
 		}
+	}
+}
+
+void GUIOpenMain() {
+	HWND hTemphwnd;
+	if(hMainDlg == NULL) {
+		/* Window doesn't exist, let's create it */
+		hTemphwnd = CreateDialog(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_MAIN), NULL, MainDlgProc);
+			if(hTemphwnd) {
+				hMainDlg = hTemphwnd;
+				ShowWindow(hMainDlg,SW_SHOW);
+			}
+	} else {
+		/* Window is open, let's make it more clear to the user */
+		SetForegroundWindow(hMainDlg);
 	}
 }
 
