@@ -120,6 +120,7 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 			}
 			break;
 		case WM_TIMER:
+			/* Updates the main window elements, such as time and sync status */
 			GUIElementsDraw(hwnd);
 			break;	
 		case WM_COMMAND:
@@ -160,7 +161,7 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 			}	
 			break;
 		case WM_DESTROY:
-			hDrawTimer = KillTimer(hwnd,4231);		
+			hDrawTimer = KillTimer(hwnd,4231);
 			hMainDlg = NULL; /* To mark that this window is closed */
 			if(bQuit == 1)
 				PostQuitMessage(0); /* Quit */
@@ -314,6 +315,9 @@ DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 		}
     }
     
+    /* if we reached the end of the loop, 
+	   It means the program is shutting down.. */
+    
     /* Unregistering the hotkeys */
     HotkeysUnregister(hDummyWindow);
     
@@ -324,9 +328,14 @@ DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 	}	
 		
 	/* Kill all windows and return */
-	DestroyWindow(hDummyWindow);
-	if(hMainDlg != NULL) 
+	if(hDummyWindow != NULL) {
+		DestroyWindow(hDummyWindow);
+		hDummyWindow = NULL;
+	}
+	if(hMainDlg != NULL) {
 		DestroyWindow(hMainDlg);
+		hMainDlg = NULL;
+	}
 		
 	return 1;	
 }
@@ -428,22 +437,22 @@ void GUIOptionsDraw(HWND hwnd,SyncOptions* Sets) {
 	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"10 seconds");			
 	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"30 seconds");
 	
-	if(Sets->StartMinimized == 1)
+	if(Sets->StartMinimized)
 		SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
 	else
 		SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
 		
-	if(Sets->UTCOffsetState == 1) {
+	if(Sets->SystemUTCOffsetState) {
 		SendDlgItemMessage(hwnd,IDC_UTCOFFSET,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
-		SetDlgItemInt(hwnd,IDE_UTCOFFSET,Sets->UTCOffset,TRUE);
+		SetDlgItemInt(hwnd,IDE_UTCOFFSET,Sets->SystemUTCOffset,TRUE);
 		EnableWindow(hEUTCOffset,TRUE);						
 	} else {
 		SendDlgItemMessage(hwnd,IDC_UTCOFFSET,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
-		SetDlgItemInt(hwnd,IDE_UTCOFFSET,Sets->UTCOffset,TRUE);	
+		SetDlgItemInt(hwnd,IDE_UTCOFFSET,Sets->SystemUTCOffset,TRUE);	
 		EnableWindow(hEUTCOffset,FALSE);		
 	}	
 	
-	if(Sets->AutoOnStartup == 1)
+	if(Sets->AutoOnStart)
 		SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
 	else
 		SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);																	
@@ -485,17 +494,17 @@ void GUIOptionsSave(HWND hwnd,SyncOptions* Sets) {
 		Sets->StartMinimized = 0;
 		
 	if(SendDlgItemMessage(hwnd,IDC_UTCOFFSET,BM_GETCHECK,0,0) == BST_CHECKED) {
-		Sets->UTCOffsetState = 1;
-		Sets->UTCOffset = GetDlgItemInt(hwnd,IDE_UTCOFFSET,NULL,TRUE);
+		Sets->SystemUTCOffsetState = 1;
+		Sets->SystemUTCOffset = GetDlgItemInt(hwnd,IDE_UTCOFFSET,NULL,TRUE);
 	} else {
-		Sets->UTCOffsetState = 0;
-		Sets->UTCOffset = GetDlgItemInt(hwnd,IDE_UTCOFFSET,NULL,TRUE);	
+		Sets->SystemUTCOffsetState = 0;
+		Sets->SystemUTCOffset = GetDlgItemInt(hwnd,IDE_UTCOFFSET,NULL,TRUE);	
 	}
 			
 	if(SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_GETCHECK,0,0) == BST_CHECKED)
-		Sets->AutoOnStartup = 1;
+		Sets->AutoOnStart = 1;
 	else
-		Sets->AutoOnStartup = 0;			
+		Sets->AutoOnStart = 0;			
 		
 	switch(SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_GETCURSEL,0,0)) {
 		case 0:
@@ -511,7 +520,7 @@ void GUIOptionsSave(HWND hwnd,SyncOptions* Sets) {
 			Sets->AutoSyncInterval = 30;
 			break;
 		default:
-			Sets->AutoSyncInterval = 10;
+			Sets->AutoSyncInterval = Defaults.AutoSyncInterval;
 			break;			
 	}
 	

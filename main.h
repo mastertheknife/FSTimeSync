@@ -4,11 +4,11 @@
 #include "debug.h"
 
 typedef struct tagSyncOptions {
-	unsigned int StartMinimized;	
-	unsigned int UTCOffsetState;
-	unsigned int AutoOnStartup;	
-	unsigned int AutoSyncInterval;
-	int UTCOffset;
+	DWORD StartMinimized;	
+	DWORD SystemUTCOffsetState;
+	LONG SystemUTCOffset;
+	DWORD AutoOnStart;	
+	DWORD AutoSyncInterval;
 	WORD ManSyncHotkey;
 	WORD ModeSwitchHotkey;
 } SyncOptions;

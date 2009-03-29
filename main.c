@@ -8,8 +8,8 @@
 #include <commctrl.h>
 
 /* Globals */
-SyncOptions Settings = {1,0,1,10,0,MAKEWORD(VK_F6,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(VK_F7,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* The options! */
-SyncOptions Defaults = {0,10,1,0,0}; /* Default options for when using the Defaults button */
+SyncOptions Settings = {0,0,0,0,0,MAKEWORD(VK_F6,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(VK_F7,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* The options! */
+SyncOptions Defaults = {0,0,0,1,10}; /* Default options */
 CRITICAL_SECTION SettingsCS; /* Critical section to protect the options structure */
 
 static unsigned int AutoSync; /* Runtime setting controlling manual or auto mode */
@@ -29,7 +29,10 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 	RegistryStartup();
  	GUIStartup();
 
- 	AutoSync = Settings.AutoOnStartup;
+	/* Load the settings from the registry */
+	RegistryReadSettings(&Settings);
+	/* Set the operating mode (manual or auto) based on the setting */
+ 	SetOperMode(Settings.AutoOnStart);
 	
 	/* Start the GUI Thread */
 	if(Settings.StartMinimized == 1)
@@ -38,7 +41,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		GUIStartThread(nCmdShow);	
 			 		
 	while(!bQuit) {
-		Sleep(50);
+		Sleep(25);
 	}
 	
 	/* Stop the GUI thread, or at least wait for it to close */
@@ -107,7 +110,7 @@ int HotkeysUnregister(HWND hwnd) {
 	if(!(UnregisterHotKey(hwnd, 443)))
 		debuglog(DEBUG_ERROR,"Failed unregistering manual sync hotkey\n");
 		
-	if((UnregisterHotKey(hwnd, 444)))
+	if(!(UnregisterHotKey(hwnd, 444)))
 		debuglog(DEBUG_ERROR,"Failed unregistering mode switch hotkey\n");	
 	
 	return 1;
