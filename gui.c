@@ -26,7 +26,24 @@ LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM 
 		case TRAYICONMSG:
 			switch(lParam) {
 				case WM_CONTEXTMENU:
-					MessageBox(hwnd,"Right click detected\n","FS Time Sync",MB_OK);
+					{
+						HMENU TrayMenu;
+						HMENU SubTrayMenu;
+						POINT CurPos;
+						
+						GetCursorPos(&CurPos);
+						TrayMenu = LoadMenu(GetModuleHandle(NULL),MAKEINTRESOURCE(IDM_TRAYMENU));
+						SubTrayMenu = GetSubMenu(TrayMenu,0);
+						
+						SetMenuDefaultItem(SubTrayMenu,0,TRUE);
+						
+						SetForegroundWindow(hwnd);
+						TrackPopupMenu(SubTrayMenu,TPM_RIGHTALIGN | TPM_BOTTOMALIGN,CurPos.x,CurPos.y,0,hwnd,NULL);
+						PostMessage(hwnd, WM_NULL, 0, 0);
+						
+						CloseHandle(TrayMenu);
+						CloseHandle(SubTrayMenu);
+					}
 					break;
 				case WM_USER:
 					if(hMainDlg == NULL) {

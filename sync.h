@@ -18,6 +18,8 @@ typedef struct tagFSDate_t {
    WORD Year; // 0x240
 } FSDate_t;
 
-
+int SyncConnect();
+int SyncDisconnect();
+int SyncConStatus();
 
 #endif

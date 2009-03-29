@@ -5,6 +5,10 @@
 #define IDI_ICON								1
 #define IDD_OPTIONS                             103
 #define IDD_MAIN                                105
+#define IDM_TRAYMENU							300
+#define IDM_RESTORE								200
+#define IDM_MODESWITCH							201
+#define IDM_QUIT								202
 #define IDP_SYNCSTATUS                          1002
 #define IDL_SYNCINT 	  	                    1004
 #define IDH_OPERMODEHOTKEY                      1006
