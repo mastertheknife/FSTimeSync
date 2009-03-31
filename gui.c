@@ -211,7 +211,8 @@ BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPar
 					CopySettings(&Settings,&PendingSettings);
 					LeaveCriticalSection(&SettingsCS);
 					
-					/* TODO: Save to registry */
+					/* Save to registry */
+					RegistryWriteSettings(&PendingSettings);
 
 					/* Close the options dialog */
 					EndDialog(hwnd,IDB_OK);

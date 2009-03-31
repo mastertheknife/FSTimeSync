@@ -34,7 +34,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 	/* Set the operating mode (manual or auto) based on the setting */
  	SetOperMode(Settings.AutoOnStart);
 	
-	/* Start the GUI Thread */
+	/* Start the GUI Thread, based on the Start Minimized setting */
 	if(Settings.StartMinimized == 1)
 		GUIStartThread(SW_MINIMIZE);
 	else	
@@ -47,6 +47,9 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 	/* Stop the GUI thread, or at least wait for it to close */
 	GUIStopThread();
 	
+	/* Write settings to the registry */
+	RegistryWriteSettings(&Settings);
+
 	/* Delete the critical section and perform complete shutdown */	
 	DeleteCriticalSection(&SettingsCS);		
 	GUIShutdown();
