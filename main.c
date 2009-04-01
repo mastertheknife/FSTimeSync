@@ -8,8 +8,8 @@
 #include <commctrl.h>
 
 /* Globals */
-SyncOptions Settings = {0,0,0,0,0,MAKEWORD(VK_F6,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(VK_F7,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* The options! */
-SyncOptions Defaults = {0,0,0,1,10}; /* Default options */
+SyncOptions Settings = {0,0,0,0,0,0,MAKEWORD(VK_F6,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(VK_F7,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* The options! */
+SyncOptions Defaults = {0,0,0,1,1,10}; /* Default options */
 CRITICAL_SECTION SettingsCS; /* Critical section to protect the options structure */
 
 static unsigned int AutoSync; /* Runtime setting controlling manual or auto mode */

@@ -2,7 +2,7 @@
 #define IDC_STATIC (-1)
 #endif
 
-#define IDI_ICON								1
+#define IDI_ICON								2
 #define IDD_OPTIONS                             103
 #define IDD_MAIN                                105
 #define IDM_TRAYMENU							300
@@ -14,6 +14,7 @@
 #define IDH_OPERMODEHOTKEY                      1006
 #define IDC_AUTOSYNCSTARTUP       		        1007
 #define IDC_STARTMINIMIZED                      1008
+#define IDC_DAYLIGHTSAVING						1009
 #define IDC_UTCOFFSET                           1011
 #define IDE_UTCOFFSET                           1012
 #define IDH_MANSYNCHOTKEY                       1014

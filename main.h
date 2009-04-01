@@ -7,6 +7,7 @@ typedef struct tagSyncOptions {
 	DWORD StartMinimized;	
 	DWORD SystemUTCOffsetState;
 	LONG SystemUTCOffset;
+	DWORD DaylightSaving;
 	DWORD AutoOnStart;	
 	DWORD AutoSyncInterval;
 	WORD ManSyncHotkey;

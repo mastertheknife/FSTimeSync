@@ -26,6 +26,7 @@ int RegistryReadSettings(SyncOptions* ReadSettings) {
 		ReadSettings->StartMinimized = Defaults.StartMinimized;
 		ReadSettings->SystemUTCOffsetState = Defaults.SystemUTCOffsetState;
 		ReadSettings->SystemUTCOffset = Defaults.SystemUTCOffset;
+		ReadSettings->DaylightSaving = Defaults.DaylightSaving;
 		ReadSettings->AutoOnStart = Defaults.AutoOnStart;	
 		ReadSettings->AutoSyncInterval = Defaults.AutoSyncInterval;
 		return 0;
@@ -51,6 +52,13 @@ int RegistryReadSettings(SyncOptions* ReadSettings) {
 			
 		ReadSettings->SystemUTCOffset = Defaults.SystemUTCOffset;
 	}
+	
+	if((nRegResult = RegQueryValueEx(hRegKey,"DaylightSaving",0,NULL,(LPVOID)&(ReadSettings->DaylightSaving),&dwSize)) != ERROR_SUCCESS) {
+		if(nRegResult != ERROR_FILE_NOT_FOUND)
+			debuglog(DEBUG_WARNING,"Failed reading DaylightSaving registry value.\n");
+			
+		ReadSettings->DaylightSaving = Defaults.DaylightSaving;
+	}	
 	
 	if((nRegResult = RegQueryValueEx(hRegKey,"AutoOnStart",0,NULL,(LPVOID)&(ReadSettings->AutoOnStart),&dwSize)) != ERROR_SUCCESS) {
 		if(nRegResult != ERROR_FILE_NOT_FOUND)
@@ -110,6 +118,10 @@ int RegistryWriteSettings(SyncOptions* WriteSettings) {
 	
 	if(RegSetValueEx(hRegKey,"SystemUTCOffset",0,REG_DWORD,(LPVOID)&(WriteSettings->SystemUTCOffset),sizeof(DWORD)) != ERROR_SUCCESS) {
 		debuglog(DEBUG_WARNING,"Failed writing SystemUTCOffset registry value.\n");		
+	}
+	
+	if(RegSetValueEx(hRegKey,"DaylightSaving",0,REG_DWORD,(LPVOID)&(WriteSettings->DaylightSaving),sizeof(DWORD)) != ERROR_SUCCESS) {
+		debuglog(DEBUG_WARNING,"Failed writing DaylightSaving registry value.\n");		
 	}
 	
 	if(RegSetValueEx(hRegKey,"AutoOnStart",0,REG_DWORD,(LPVOID)&(WriteSettings->AutoOnStart),sizeof(DWORD)) != ERROR_SUCCESS) {

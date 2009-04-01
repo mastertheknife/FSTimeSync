@@ -14,7 +14,6 @@ static HANDLE hGUIThread = NULL;
 static UINT_PTR hDrawTimer;
 static SyncOptions PendingSettings;
 static HICON hIcon;
-static HICON hIconSm;
 static NOTIFYICONDATA TrayIconData;
 static unsigned int TrayIconState;
 
@@ -346,22 +345,18 @@ int GUIStartup(void) {
 	InitCommonControls();	
 	
 	hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON));
-	hIconSm  = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON), IMAGE_ICON, 16, 16, 0);
+	/* hIconSm  = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON)); */
 	
 	if(hIcon == NULL)
-		debuglog(DEBUG_ERROR,"Failed to load big 32x32 icon!\n");
-
-	if(hIconSm == NULL)
-		debuglog(DEBUG_ERROR,"Failed to load small 16x16 icon!\n");	
+		debuglog(DEBUG_ERROR,"Failed to load icon!\n");	
 	
 	return 1;	
 }
 
 int GUIShutdown(void) {
 
-	/* Close the handles to the icons */
+	/* Close the handle to the icon */
 	CloseHandle(hIcon);
-	CloseHandle(hIconSm);
 
 	return 1;
 }
@@ -451,7 +446,12 @@ void GUIOptionsDraw(HWND hwnd,SyncOptions* Sets) {
 		SendDlgItemMessage(hwnd,IDC_UTCOFFSET,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
 		SetDlgItemInt(hwnd,IDE_UTCOFFSET,Sets->SystemUTCOffset,TRUE);	
 		EnableWindow(hEUTCOffset,FALSE);		
-	}	
+	}
+	
+	if(Sets->DaylightSaving)
+		SendDlgItemMessage(hwnd,IDC_DAYLIGHTSAVING,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
+	else
+		SendDlgItemMessage(hwnd,IDC_DAYLIGHTSAVING,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
 	
 	if(Sets->AutoOnStart)
 		SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
@@ -501,6 +501,11 @@ void GUIOptionsSave(HWND hwnd,SyncOptions* Sets) {
 		Sets->SystemUTCOffsetState = 0;
 		Sets->SystemUTCOffset = GetDlgItemInt(hwnd,IDE_UTCOFFSET,NULL,TRUE);	
 	}
+	
+	if(SendDlgItemMessage(hwnd,IDC_DAYLIGHTSAVING,BM_GETCHECK,0,0) == BST_CHECKED)
+		Sets->DaylightSaving = 1;
+	else
+		Sets->DaylightSaving = 0;	
 			
 	if(SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_GETCHECK,0,0) == BST_CHECKED)
 		Sets->AutoOnStart = 1;
@@ -562,5 +567,5 @@ void GUIOpenMain() {
 
 void GUISetDialogIcon(HWND hwnd) {
 	SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
-	SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIconSm);
+	SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
 }
