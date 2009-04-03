@@ -83,11 +83,13 @@ IDI_ICON           ICON           ".\\IconBlue15.ico"
 LANGUAGE LANG_ENGLISH, SUBLANG_NEUTRAL
 IDM_TRAYMENU MENU
 {
-    POPUP "TrayMenu"
-    {
-        MENUITEM "&Restore", IDM_RESTORE
-        MENUITEM "&Switch Mode", IDM_MODESWITCH
-        MENUITEM SEPARATOR
-        MENUITEM "&Quit", IDM_QUIT
-    }
+	POPUP "TrayMenu00"
+	{
+		MENUITEM "&Restore", IDM_RESTORE
+		MENUITEM SEPARATOR		
+		MENUITEM "&Automatic", IDM_AUTOMATIC
+		MENUITEM "&Manual", IDM_MANUAL
+		MENUITEM SEPARATOR
+		MENUITEM "&Quit", IDM_QUIT
+	}
 }

@@ -9,14 +9,14 @@
 
 static HWND hMainDlg = NULL;
 static HWND hDummyWindow = NULL;
-
 static HANDLE hGUIThread = NULL;
 static UINT_PTR hDrawTimer;
 static SyncOptions PendingSettings;
 static HICON hIcon;
 static NOTIFYICONDATA TrayIconData;
 static unsigned int TrayIconState;
-
+static HMENU TrayMenu;
+static HMENU SubTrayMenu;
 
 LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM lParam) {
 	HWND hTemphwnd;
@@ -26,22 +26,23 @@ LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM 
 			switch(lParam) {
 				case WM_CONTEXTMENU:
 					{
-						HMENU TrayMenu;
-						HMENU SubTrayMenu;
-						POINT CurPos;
-						
+						POINT CurPos;			
 						GetCursorPos(&CurPos);
-						TrayMenu = LoadMenu(GetModuleHandle(NULL),MAKEINTRESOURCE(IDM_TRAYMENU));
-						SubTrayMenu = GetSubMenu(TrayMenu,0);
-						
+					
 						SetMenuDefaultItem(SubTrayMenu,0,TRUE);
 						
+						if(GetOperMode())
+							CheckMenuRadioItem(SubTrayMenu,2,3,2,MF_BYPOSITION);
+						else
+							CheckMenuRadioItem(SubTrayMenu,2,3,3,MF_BYPOSITION);
+						
 						SetForegroundWindow(hwnd);
-						TrackPopupMenu(SubTrayMenu,TPM_RIGHTALIGN | TPM_BOTTOMALIGN,CurPos.x,CurPos.y,0,hwnd,NULL);
+						if(GetSystemMetrics(SM_MENUDROPALIGNMENT)) 
+							TrackPopupMenu(SubTrayMenu,TPM_LEFTALIGN | TPM_BOTTOMALIGN,CurPos.x,CurPos.y,0,hwnd,NULL);
+						else
+							TrackPopupMenu(SubTrayMenu,TPM_RIGHTALIGN | TPM_BOTTOMALIGN,CurPos.x,CurPos.y,0,hwnd,NULL);
 						PostMessage(hwnd, WM_NULL, 0, 0);
 						
-						CloseHandle(TrayMenu);
-						CloseHandle(SubTrayMenu);
 					}
 					break;
 				case WM_USER:
@@ -49,15 +50,34 @@ LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM 
 					   Or bring it to the foreground if it already exists
 					*/
 					GUIOpenMain();
-					break;				
+					break;	
+				default:
+					return DefWindowProc(hwnd,Message,wParam,lParam);				
 			}
         	break;
         case WM_HOTKEY:
 			if(wParam == 443)
 				MessageBox(hMainDlg,"Received 443 HOTKEY (MANUAL SYNC)","FS Time Sync",MB_OK);
 			else if(wParam == 444) {
-				SendMessage(hwnd,WM_COMMAND,MAKEWPARAM(IDM_MODESWITCH,0),0);
-			}	
+				/* If automatic, change to manual and vice versa. */
+				if(GetOperMode()) {
+					SetOperMode(FALSE);
+					/* If the dialog exists, redraw will also update the tray,
+				   	But if it doesn't, we have to update the tray ourselves */
+					if(hMainDlg)
+						GUIOperModeDraw(hMainDlg,0);
+					else
+						GUITrayUpdate();
+				} else {
+					SetOperMode(TRUE);					
+					if(hMainDlg)
+						GUIOperModeDraw(hMainDlg,1);
+					else
+						GUITrayUpdate();	
+				}
+			} else {
+				return DefWindowProc(hwnd,Message,wParam,lParam);
+			}
 			break;
 		case WM_COMMAND:
 			switch(LOWORD(wParam))
@@ -65,28 +85,36 @@ LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM 
 				case IDM_RESTORE:
 					GUIOpenMain();
 					break;
-				case IDM_MODESWITCH:
-					/* If automatic, change to manual and vice versa. */
-					if(GetOperMode()) {
-						SetOperMode(FALSE);
-						/* If the dialog exists, redraw will also update the tray,
-					   	But if it doesn't, we have to update the tray ourselves */
-						if(hMainDlg)
-							GUIOperModeDraw(hMainDlg,0);
-						else
-							GUITrayUpdate();							
-					} else {
-						SetOperMode(TRUE);					
-						if(hMainDlg)
-							GUIOperModeDraw(hMainDlg,1);
-						else
-							GUITrayUpdate();	
-					}
-					break;
 				case IDM_QUIT:
 					PostQuitMessage(0);
 					bQuit = 1;
 					break;	
+				case IDM_AUTOMATIC:
+					/* If already in automatic mode, do nothing */
+					if(GetOperMode())
+						break;
+
+					SetOperMode(TRUE);
+					if(hMainDlg)
+						GUIOperModeDraw(hMainDlg,1);
+					else
+						GUITrayUpdate();
+									
+					break;
+				case IDM_MANUAL:
+					/* If already in manual mode, do nothing */
+					if(!GetOperMode())
+						break;
+
+					SetOperMode(FALSE);
+					if(hMainDlg)
+						GUIOperModeDraw(hMainDlg,0);
+					else
+						GUITrayUpdate();
+									
+					break;
+				default:
+					return DefWindowProc(hwnd,Message,wParam,lParam);	
 			}
 			break;
 		default:
@@ -345,18 +373,27 @@ int GUIStartup(void) {
 	InitCommonControls();	
 	
 	hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON));
-	/* hIconSm  = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON)); */
-	
+		
 	if(hIcon == NULL)
 		debuglog(DEBUG_ERROR,"Failed to load icon!\n");	
 	
-	return 1;	
+	if(!(TrayMenu = LoadMenu(GetModuleHandle(NULL),MAKEINTRESOURCE(IDM_TRAYMENU))))
+		debuglog(DEBUG_ERROR,"Failed to load tray menu!\n");
+	
+	SubTrayMenu = GetSubMenu(TrayMenu,0);
+		
+	return 1;
 }
+
 
 int GUIShutdown(void) {
 
 	/* Close the handle to the icon */
 	CloseHandle(hIcon);
+
+	/* Close the handles to the menus */
+	CloseHandle(SubTrayMenu);
+	CloseHandle(TrayMenu);
 
 	return 1;
 }

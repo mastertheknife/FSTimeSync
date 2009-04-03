@@ -7,8 +7,9 @@
 #define IDD_MAIN                                105
 #define IDM_TRAYMENU							300
 #define IDM_RESTORE								200
-#define IDM_MODESWITCH							201
-#define IDM_QUIT								202
+#define IDM_AUTOMATIC							201
+#define IDM_MANUAL								202
+#define IDM_QUIT								203
 #define IDP_SYNCSTATUS                          1002
 #define IDL_SYNCINT 	  	                    1004
 #define IDH_OPERMODEHOTKEY                      1006
