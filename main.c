@@ -1,4 +1,4 @@
-#define SLEEP_DURATION 100
+#define SLEEP_DURATION 200
 #include "globalinc.h"
 #include "debug.h"
 #include "main.h"
@@ -11,8 +11,7 @@
 /* Globals */
 SyncOptions_t Settings = {0,0,0,0,0,0,MAKEWORD(VK_F6,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(VK_F7,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* The options! */
 SyncOptions_t Defaults = {0,0,0,1,1,10}; /* Default options */
-CRITICAL_SECTION SettingsCS; /* Critical section to protect the options structure */
-CRITICAL_SECTION StatsCS; /* This one to protect the stats */
+CRITICAL_SECTION ProgramDataCS;
 SyncStats_t Stats;
 
 static unsigned int AutoSync; /* Runtime setting controlling manual or auto mode */
@@ -27,8 +26,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 	}
 
 	/* Initialize the critical section and perform startup */
-	InitializeCriticalSection(&SettingsCS);
-	InitializeCriticalSection(&StatsCS);
+	InitializeCriticalSection(&ProgramDataCS);
 	DebugStartup();
 	RegistryStartup();
  	GUIStartup();
@@ -38,34 +36,41 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 	/* Set the operating mode (manual or auto) based on the setting */
  	SetOperMode(Settings.AutoOnStart);
 	
-	Stats.LastSync = time(NULL);
-	Stats.SimStatus = 0;
-	
 	/* Start the GUI Thread, based on the Start Minimized setting */
 	if(Settings.StartMinimized == 1)
 		GUIStartThread(SW_MINIMIZE);
 	else	
 		GUIStartThread(nCmdShow);	
 			 		
-	DWORD SyncCounter = 0;
-	DWORD NextSync;
+	
+	/* Main program loop */
+	Stats.SyncNext = time(NULL);
 	while(!bQuit) {
-		if(GetOperMode()) {
-			if(SyncCounter >= (Settings.AutoSyncInterval*1000)) {
-				/* Sync code here */
-				Stats.LastSync = time(NULL);
-				Stats.LastSyncChanged = 1; 
-				SyncCounter = 0;
+		EnterCriticalSection(&ProgramDataCS);	
+		if(GetOperMode()) {		
+			/* Check if switched to faster synch interval and there's too long to wait */
+			if((Stats.SyncNext-time(NULL)) > Settings.AutoSyncInterval) {
+				Stats.SyncNext = time(NULL)+Settings.AutoSyncInterval;
+				Stats.SyncInterval = Settings.AutoSyncInterval; /* Progress bar is drawn based on current synch, not next one */
 			}
-			DWORD i;
-			for(i=0;i<Settings.AutoSyncInterval;i++) {
-				if(SyncCounter == i*1000) {
-					Stats.SyncNext = Settings.AutoSyncInterval-i;
-					Stats.NextSyncChanged = 1;
-				}
+			/* Check if switched to slower interval */
+			if(Stats.SyncInterval < Settings.AutoSyncInterval) {
+				Stats.SyncNext = time(NULL)+Settings.AutoSyncInterval;
+				Stats.SyncInterval = Settings.AutoSyncInterval; /* Progress bar is drawn based on current synch, not next one */
 			}	
-		}		
-		SyncCounter += SLEEP_DURATION;
+			if(Stats.SyncNext <= time(NULL)) {
+				/* Sync code here */
+				Stats.SyncLast = time(NULL);
+				Stats.SyncNext = time(NULL)+Settings.AutoSyncInterval;
+				Stats.SyncInterval = Settings.AutoSyncInterval;
+				Stats.SyncLastModified = 1;
+			}
+		} else {
+			Stats.SyncNext = time(NULL)+Settings.AutoSyncInterval;
+			Stats.SyncInterval = Settings.AutoSyncInterval;
+		}
+		
+		LeaveCriticalSection(&ProgramDataCS);		
 		Sleep(SLEEP_DURATION);
 	}
 	
@@ -77,7 +82,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 	RegistryWriteSettings(&Settings);
 
 	/* Delete the critical section and perform complete shutdown */	
-	DeleteCriticalSection(&SettingsCS);		
+	DeleteCriticalSection(&ProgramDataCS);		
 	GUIShutdown();
     RegistryShutdown();
     DebugShutdown();

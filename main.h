@@ -15,20 +15,16 @@ typedef struct tagSyncOptions {
 } SyncOptions_t;
 
 typedef struct tagSyncStats {
-	DWORD SyncNext;
-	DWORD SyncInterval;
 	DWORD SimStatus;
-	time_t SysUTCTime;
-	time_t SimUTCTime;
-	time_t LastSync;
-	DWORD LastSyncChanged;
-	DWORD NextSyncChanged;
+	DWORD SyncInterval; /* The interval of the current sync operation */
+	time_t SyncNext;
+	time_t SyncLast;
+	DWORD SyncLastModified;
 } SyncStats_t;
 
 extern SyncOptions_t Settings; /* The options! */
 extern SyncOptions_t Defaults; /* Default options */
-extern CRITICAL_SECTION SettingsCS; /* Critical section to protect the Settings structure */
-extern CRITICAL_SECTION StatsCS; /* This one to protect the stats */
+extern CRITICAL_SECTION ProgramDataCS; /* Critical section to protect the settings and stats structures */
 extern SyncStats_t Stats;
 
 int SetOperMode(unsigned int bAuto);
