@@ -11,22 +11,21 @@
 /* Globals */
 SyncOptions_t Settings = {0,0,0,0,0,0,MAKEWORD(VK_F6,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(VK_F7,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* The options! */
 SyncOptions_t Defaults = {0,0,0,1,1,10}; /* Default options */
-CRITICAL_SECTION ProgramDataCS;
 SyncStats_t Stats;
-
-static unsigned int AutoSync; /* Runtime setting controlling manual or auto mode */
-volatile unsigned int bQuit; /* If set to 1, program exists */
+CRITICAL_SECTION ProgramDataCS;
+static RuntimeVals_t RuntimeVals;
+static CRITICAL_SECTION ProgramControlCS;
 
 int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpszArgument, int nCmdShow) {
-	
 	/* Mutex to prevent multiple instances of this application */
   	if (CreateMutex(NULL,FALSE,"_FSTimeSyncMutex_") && GetLastError() == ERROR_ALREADY_EXISTS) {
 		MessageBox(NULL,"An instance of FS Time Sync is already running.","FS Time Sync Error",MB_OK | MB_ICONERROR);
 		return 100;
 	}
 
-	/* Initialize the critical section and perform startup */
+	/* Initialize the critical sections and perform startup */
 	InitializeCriticalSection(&ProgramDataCS);
+	InitializeCriticalSection(&ProgramControlCS);
 	DebugStartup();
 	RegistryStartup();
  	GUIStartup();
@@ -34,7 +33,8 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 	/* Load the settings from the registry */
 	RegistryReadSettings(&Settings);
 	/* Set the operating mode (manual or auto) based on the setting */
- 	SetOperMode(Settings.AutoOnStart);
+ 	SetRTVal(FST_AUTOMODE,Settings.AutoOnStart);
+	Stats.SyncNext = time(NULL);
 	
 	/* Start the GUI Thread, based on the Start Minimized setting */
 	if(Settings.StartMinimized == 1)
@@ -44,10 +44,10 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 			 		
 	
 	/* Main program loop */
-	Stats.SyncNext = time(NULL);
-	while(!bQuit) {
+	while(!GetRTVal(FST_QUIT)) {
 		EnterCriticalSection(&ProgramDataCS);	
-		if(GetOperMode()) {		
+		if(GetRTVal(FST_AUTOMODE)) {
+			/* Automatic mode */		
 			/* Check if switched to faster synch interval and there's too long to wait */
 			if((Stats.SyncNext-time(NULL)) > Settings.AutoSyncInterval) {
 				Stats.SyncNext = time(NULL)+Settings.AutoSyncInterval;
@@ -66,8 +66,15 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 				Stats.SyncLastModified = 1;
 			}
 		} else {
+			/* Manual mode */
 			Stats.SyncNext = time(NULL)+Settings.AutoSyncInterval;
 			Stats.SyncInterval = Settings.AutoSyncInterval;
+			if(GetRTVal(FST_SYNCNOW)) {
+				/* Sync code here */
+				SetRTVal(FST_SYNCNOW, 0); /* Clear the event */
+				Stats.SyncLast = time(NULL);
+				Stats.SyncLastModified = 1;
+			}
 		}
 		
 		LeaveCriticalSection(&ProgramDataCS);		
@@ -81,8 +88,9 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 	/* Write settings to the registry */
 	RegistryWriteSettings(&Settings);
 
-	/* Delete the critical section and perform complete shutdown */	
-	DeleteCriticalSection(&ProgramDataCS);		
+	/* Delete the critical sections and perform complete shutdown */	
+	DeleteCriticalSection(&ProgramDataCS);
+	DeleteCriticalSection(&ProgramControlCS);
 	GUIShutdown();
     RegistryShutdown();
     DebugShutdown();
@@ -90,23 +98,46 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
     return 0;
 }
 
-int SetOperMode(unsigned int bAuto) {
-	if(bAuto)
-		bAutoSync = 1;
-	else
-		bAutoSync = 0;
+DWORD GetRTVal(int RTVal) {
+	DWORD dwRet;
+	EnterCriticalSection(&ProgramControlCS);	
 	
-	return bAutoSync;
+	switch(RTVal) {
+		case FST_QUIT:
+			dwRet = RuntimeVals.bQuit;
+			break;
+		case FST_SYNCNOW:
+			dwRet = RuntimeVals.bSyncNow;
+			break;
+		case FST_AUTOMODE:
+			dwRet = RuntimeVals.bAutoMode;
+			break;
+		default:
+			dwRet = 0;
+	}
+	
+	LeaveCriticalSection(&ProgramControlCS);
+	return dwRet;
 }	
-				
-int GetOperMode() {
-	if(bAutoSync)
-		return 1;
-	else
-		return 0;
-
+	
+void SetRTVal(int RTVal, int NewValue) {
+	EnterCriticalSection(&ProgramControlCS);	
+	
+	switch(RTVal) {
+		case FST_QUIT:
+			RuntimeVals.bQuit = NewValue;
+			break;
+		case FST_SYNCNOW:
+			RuntimeVals.bSyncNow = NewValue;
+			break;
+		case FST_AUTOMODE:
+			RuntimeVals.bAutoMode = NewValue;
+			break;
+	}
+	
+	LeaveCriticalSection(&ProgramControlCS);
 }
-
+				
 int HotkeysRegister(HWND hwnd, WORD ManSync, WORD OperModeSwitch) {
 	UINT ManSyncModifiers = 0;
 	UINT OperModeSwitchModifiers = 0;
@@ -149,6 +180,5 @@ int HotkeysUnregister(HWND hwnd) {
 	
 	return 1;
 }	
-	
 
 

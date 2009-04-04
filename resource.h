@@ -9,6 +9,7 @@
 #define IDM_AUTOMATIC                           201
 #define IDM_MANUAL                              202
 #define IDM_QUIT                                203
+#define IDM_SYNCNOW								204
 #define IDM_TRAYMENU                            300
 #define IDP_SYNCSTATUS                          1002
 #define IDL_SYNCINT                             1004

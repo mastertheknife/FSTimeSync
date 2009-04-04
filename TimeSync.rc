@@ -26,6 +26,7 @@ IDM_TRAYMENU MENU
     {
         MENUITEM "&Restore", IDM_RESTORE
         MENUITEM SEPARATOR
+        MENUITEM "&Sync Now", IDM_SYNCNOW
         MENUITEM "&Automatic", IDM_AUTOMATIC
         MENUITEM "&Manual", IDM_MANUAL
         MENUITEM SEPARATOR

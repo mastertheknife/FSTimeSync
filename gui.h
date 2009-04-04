@@ -12,8 +12,8 @@ int GUIShutdown(void);
 int GUIStartThread(int nCmdShow);
 int GUIStopThread();
 
-static void GUIOperModeDraw(HWND hwnd, unsigned int AutoMode);
-static void GUIElementsDraw();
+static void GUIOperModeUpdate();
+static void GUIElementsUpdate();
 static void GUIOptionsDraw(HWND hwnd,SyncOptions_t* Sets);
 static void GUIOptionsSave(HWND hwnd,SyncOptions_t* Sets);
 static void GUISetDialogIcon(HWND hwnd);

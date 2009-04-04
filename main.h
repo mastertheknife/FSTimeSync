@@ -3,6 +3,10 @@
 #include "globalinc.h"
 #include "debug.h"
 
+#define FST_QUIT 901
+#define FST_AUTOMODE 902
+#define FST_SYNCNOW 903
+
 typedef struct tagSyncOptions {
 	DWORD StartMinimized;	
 	DWORD SystemUTCOffsetState;
@@ -22,17 +26,21 @@ typedef struct tagSyncStats {
 	DWORD SyncLastModified;
 } SyncStats_t;
 
+typedef struct tagRV {
+	DWORD bQuit;
+	DWORD bSyncNow;
+	DWORD bAutoMode;
+} RuntimeVals_t;
+
 extern SyncOptions_t Settings; /* The options! */
 extern SyncOptions_t Defaults; /* Default options */
 extern CRITICAL_SECTION ProgramDataCS; /* Critical section to protect the settings and stats structures */
 extern SyncStats_t Stats;
 
-int SetOperMode(unsigned int bAuto);
-int GetOperMode();
+void SetRTVal(int RTVal, int NewValue);
+DWORD GetRTVal(int RTVal);
 
 int HotkeysRegister(HWND hwnd, WORD ManSync, WORD OperModeSwitch);
 int HotkeysUnregister(HWND hwnd);
 
-static unsigned int bAutoSync; /* Runtime setting controlling manual or auto mode */
-extern volatile unsigned int bQuit;
 #endif

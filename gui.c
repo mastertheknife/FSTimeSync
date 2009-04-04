@@ -31,10 +31,13 @@ LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM 
 					
 						SetMenuDefaultItem(SubTrayMenu,0,TRUE);
 						
-						if(GetOperMode())
-							CheckMenuRadioItem(SubTrayMenu,2,3,2,MF_BYPOSITION);
-						else
-							CheckMenuRadioItem(SubTrayMenu,2,3,3,MF_BYPOSITION);
+						if(GetRTVal(FST_AUTOMODE)) {
+							EnableMenuItem(SubTrayMenu,2,MF_BYPOSITION | MF_GRAYED);
+							CheckMenuRadioItem(SubTrayMenu,3,4,3,MF_BYPOSITION);
+						} else { 
+							EnableMenuItem(SubTrayMenu,2,MF_BYPOSITION | MF_ENABLED);
+							CheckMenuRadioItem(SubTrayMenu,3,4,4,MF_BYPOSITION);
+						}
 						
 						SetForegroundWindow(hwnd);
 						if(GetSystemMetrics(SM_MENUDROPALIGNMENT)) 
@@ -58,22 +61,24 @@ LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM 
         case WM_HOTKEY:
 			switch(wParam) {
 				case 443:
-					MessageBox(hMainDlg,"Received 443 HOTKEY (MANUAL SYNC)","FS Time Sync",MB_OK);
+					/* Sync now only if there's no sync in progress */	
+					if(!GetRTVal(FST_SYNCNOW))
+						SetRTVal(FST_SYNCNOW,TRUE);
 					break;
 				case 444: 
 					/* If automatic, change to manual and vice versa. */
-					if(GetOperMode()) {
-						SetOperMode(FALSE);
+					if(GetRTVal(FST_AUTOMODE)) {
+						SetRTVal(FST_AUTOMODE,FALSE);
 						/* If the dialog exists, redraw will also update the tray,
 				   		But if it doesn't, we have to update the tray ourselves */
 						if(hMainDlg)
-							GUIOperModeDraw(hMainDlg,0);
+							GUIOperModeUpdate();
 						else
 							GUITrayUpdate();
 					} else {
-						SetOperMode(TRUE);					
+						SetRTVal(FST_AUTOMODE,TRUE);					
 						if(hMainDlg)
-							GUIOperModeDraw(hMainDlg,1);
+							GUIOperModeUpdate();
 						else
 							GUITrayUpdate();	
 					}
@@ -90,31 +95,35 @@ LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM 
 					break;
 				case IDM_QUIT:
 					PostQuitMessage(0);
-					bQuit = 1;
-					break;	
+					SetRTVal(FST_QUIT,1);
+					break;
+				case IDM_SYNCNOW:
+					if(!GetRTVal(FST_SYNCNOW))
+						SetRTVal(FST_SYNCNOW,TRUE);
+					break;		
 				case IDM_AUTOMATIC:
 					/* If already in automatic mode, do nothing */
-					if(GetOperMode())
+					if(GetRTVal(FST_AUTOMODE))
 						break;
 
-					SetOperMode(TRUE);
+					SetRTVal(FST_AUTOMODE,TRUE);
 					if(hMainDlg)
-						GUIOperModeDraw(hMainDlg,1);
+						GUIOperModeUpdate();
 					else
 						GUITrayUpdate();
 									
 					break;
 				case IDM_MANUAL:
 					/* If already in manual mode, do nothing */
-					if(!GetOperMode())
+					if(!GetRTVal(FST_AUTOMODE))
 						break;
 
-					SetOperMode(FALSE);
+					SetRTVal(FST_AUTOMODE,FALSE);
 					if(hMainDlg)
-						GUIOperModeDraw(hMainDlg,0);
+						GUIOperModeUpdate();
 					else
 						GUITrayUpdate();
-									
+						
 					break;
 				default:
 					return DefWindowProc(hwnd,Message,wParam,lParam);	
@@ -135,15 +144,16 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 				
 				/* Create the draw timer */
 				hDrawTimer = SetTimer(hwnd,4231,200,NULL);
-								
-				/* Draw the dialog operating modee (Auto or manual) */
-				GUIOperModeDraw(hwnd,GetOperMode());
+
+				/* Set the hMainDlg handle for the next call */
+				hMainDlg = hwnd;
+												
+				/* Draw the dialog operating mode (Auto or manual) */
+				GUIOperModeUpdate();
 
 				/* Draw the other elements */
-				GUIElementsDraw();
-							
-				SendDlgItemMessage(hwnd,IDP_NEXTSYNC, PBM_SETRANGE, 0, (LPARAM)MAKELPARAM(0, 4)); 
-				SendDlgItemMessage(hwnd,IDP_NEXTSYNC, PBM_SETPOS, (WPARAM)3, 0); 
+				GUIElementsUpdate();
+
 				SendDlgItemMessage(hwnd,IDP_SYNCSTATUS, PBM_SETRANGE, 0, (LPARAM)MAKELPARAM(0, 100)); 
 				SendDlgItemMessage(hwnd,IDP_SYNCSTATUS, PBM_SETPOS, (WPARAM)100, 0); 
 			
@@ -151,7 +161,7 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 			break;
 		case WM_TIMER:
 			/* Updates the main window elements, such as time and sync status */
-			GUIElementsDraw();
+			GUIElementsUpdate();
 			break;	
 		case WM_COMMAND:
 			switch(LOWORD(wParam)) {
@@ -167,33 +177,34 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 				case IDB_MODE:
 					{
 						/* Operating Mode changed. Update the runtime setting and modify the dialog depending on the new mode */
-						if(GetOperMode()) {
-							SetOperMode(FALSE);
-							GUIOperModeDraw(hwnd,0);
+						if(GetRTVal(FST_AUTOMODE)) {
+							SetRTVal(FST_AUTOMODE,FALSE);
+							GUIOperModeUpdate();
 						} else {
-							SetOperMode(TRUE);
-							GUIOperModeDraw(hwnd,1);
+							SetRTVal(FST_AUTOMODE,TRUE);
+							GUIOperModeUpdate();
 						}											 	
 					}
 					break;	
 				case IDB_SYNCNOW:
-					MessageBox(hwnd,"Not available yet.\n","FS Time Sync",MB_OK);
+					if(!GetRTVal(FST_SYNCNOW))
+						SetRTVal(FST_SYNCNOW,TRUE);						
 					break;
 				default:
-					return FALSE;			
+					return FALSE;
 			}
 			break;
 		case WM_CLOSE:
 			if(MessageBox(hwnd,"Are you sure you want to quit?","FS Time Sync",MB_YESNO | MB_DEFBUTTON2 | MB_ICONQUESTION) == IDYES) {
 				/* Signal WM_DESTROY that we are quitting */
-				bQuit = 1;
+				SetRTVal(FST_QUIT,1);
 				DestroyWindow(hwnd);
 			}	
 			break;
 		case WM_DESTROY:
 			hDrawTimer = KillTimer(hwnd,4231);
 			hMainDlg = NULL; /* To mark that this window is closed */
-			if(bQuit == 1)
+			if(GetRTVal(FST_QUIT))
 				PostQuitMessage(0); /* Quit */
 			break;
 		case WM_SYSCOMMAND:
@@ -309,7 +320,7 @@ DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 	TrayIconData.uCallbackMessage = TRAYICONMSG;	
 	TrayIconData.uVersion = NOTIFYICON_VERSION; /* Windows 2000 or later */
 	
-	if(GetOperMode())
+	if(GetRTVal(FST_AUTOMODE))
 		sprintf(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Automatic\nInterval: %u seconds",10);
 	else
 		strcpy(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Manual");	
@@ -428,7 +439,7 @@ int GUIStopThread() {
 	return 1;
 }
 	
-void GUIElementsDraw() {
+void GUIElementsUpdate() {
 	const char* SysUTCstr;
 	struct tm* SysUTCtm;
 	time_t SysUTC;
@@ -450,7 +461,7 @@ void GUIElementsDraw() {
 		Stats.SyncLastModified = 0;
 	}
 	
-	if(GetOperMode()) {
+	if(GetRTVal(FST_AUTOMODE)) {
 		dwInt = Stats.SyncNext - time(NULL);
 		sprintf(StrBuff,"Next synchronization in %u seconds.",dwInt);
 		SetDlgItemText(hMainDlg,IDT_NEXTSYNC,StrBuff);
@@ -464,38 +475,38 @@ void GUIElementsDraw() {
 	debuglog(DEBUG_CAPTURE,"Timer event!\n");
 }	
 
-void GUIOperModeDraw(HWND hwnd, unsigned int AutoMode) {	
-	HWND hBSync = GetDlgItem(hwnd,IDB_SYNCNOW);
-	HWND hTNoManual = GetDlgItem(hwnd,IDT_NOMANUAL);
-	HWND hPNextSync = GetDlgItem(hwnd,IDP_NEXTSYNC);		
-	HWND hToSync = GetDlgItem(hwnd,IDT_TOSYNC);
-	HWND hNextSync = GetDlgItem(hwnd,IDT_NEXTSYNC);
+void GUIOperModeUpdate() {	
+	HWND hBSync = GetDlgItem(hMainDlg,IDB_SYNCNOW);
+	HWND hTNoManual = GetDlgItem(hMainDlg,IDT_NOMANUAL);
+	HWND hPNextSync = GetDlgItem(hMainDlg,IDP_NEXTSYNC);		
+	HWND hToSync = GetDlgItem(hMainDlg,IDT_TOSYNC);
+	HWND hNextSync = GetDlgItem(hMainDlg,IDT_NEXTSYNC);
 	
 	EnterCriticalSection(&ProgramDataCS);
 	
-	if(AutoMode) {	
+	if(GetRTVal(FST_AUTOMODE)) {	
 		EnableWindow(hBSync,FALSE);
 		ShowWindow(hToSync,SW_HIDE);
 		ShowWindow(hNextSync,SW_SHOW);
 		ShowWindow(hPNextSync,SW_SHOW);								
 		ShowWindow(hTNoManual,SW_SHOW);			
-		SetDlgItemText(hwnd,IDB_MODE,"Manual Mode");	
-		SetDlgItemText(hwnd,IDT_OPERMODE,"Automatic");										
+		SetDlgItemText(hMainDlg,IDB_MODE,"Manual Mode");	
+		SetDlgItemText(hMainDlg,IDT_OPERMODE,"Automatic");										
 	} else {
 		EnableWindow(hBSync,TRUE);
 		ShowWindow(hToSync,SW_SHOW);
 		ShowWindow(hNextSync,SW_HIDE);		
 		ShowWindow(hPNextSync,SW_HIDE);														
 		ShowWindow(hTNoManual,SW_HIDE);
-		SetDlgItemText(hwnd,IDB_MODE,"Automatic Mode");	
-		SetDlgItemText(hwnd,IDT_OPERMODE,"Manual");
-		SetDlgItemText(hwnd,IDT_TOSYNC,"To synchronizate the flight simulator clock, click on the\nSync Now button or the assigned hotkey (see options).");	
+		SetDlgItemText(hMainDlg,IDB_MODE,"Automatic Mode");	
+		SetDlgItemText(hMainDlg,IDT_OPERMODE,"Manual");
+		SetDlgItemText(hMainDlg,IDT_TOSYNC,"To synchronizate the flight simulator clock, click on the\nSync Now button or the assigned hotkey (see options).");	
 	}
 	
 	LeaveCriticalSection(&ProgramDataCS);
 	
 	/* Update the GUI elements such as next sync and progress bar */
-	GUIElementsDraw(hwnd);
+	GUIElementsUpdate();
 	
 	/* Update the tray icon to the new mode */
 	GUITrayUpdate();
@@ -621,7 +632,7 @@ void GUIOptionsSave(HWND hwnd,SyncOptions_t* Sets) {
 }
 
 void GUITrayUpdate() {
-	if(GetOperMode())
+	if(GetRTVal(FST_AUTOMODE))
 		sprintf(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Automatic\nInterval: %u seconds",10);
 	else
 		strcpy(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Manual");
