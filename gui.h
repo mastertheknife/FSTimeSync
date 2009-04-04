@@ -14,8 +14,8 @@ int GUIStopThread();
 
 static void GUIOperModeDraw(HWND hwnd, unsigned int AutoMode);
 static void GUIElementsDraw(HWND hwnd);
-static void GUIOptionsDraw(HWND hwnd,SyncOptions* Sets);
-static void GUIOptionsSave(HWND hwnd,SyncOptions* Sets);
+static void GUIOptionsDraw(HWND hwnd,SyncOptions_t* Sets);
+static void GUIOptionsSave(HWND hwnd,SyncOptions_t* Sets);
 static void GUISetDialogIcon(HWND hwnd);
 static void GUITrayUpdate();
 static void GUIOpenMain(); 

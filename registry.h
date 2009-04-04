@@ -9,11 +9,11 @@ typedef struct tagRegSignature {
 	char Version[32];
 } RegSignature_t;	
 
-void CopySettings(SyncOptions* dest, const SyncOptions* src);
+void CopySettings(SyncOptions_t* dest, const SyncOptions_t* src);
 int RegistryStart();
 int RegistryShutdown();
-int RegistryReadSettings(SyncOptions* ReadSettings);
-int RegistryWriteSettings(SyncOptions* WriteSettings);
+int RegistryReadSettings(SyncOptions_t* ReadSettings);
+int RegistryWriteSettings(SyncOptions_t* WriteSettings);
 
 
 #endif

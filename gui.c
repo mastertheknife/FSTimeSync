@@ -11,7 +11,7 @@ static HWND hMainDlg = NULL;
 static HWND hDummyWindow = NULL;
 static HANDLE hGUIThread = NULL;
 static UINT_PTR hDrawTimer;
-static SyncOptions PendingSettings;
+static SyncOptions_t PendingSettings;
 static HICON hIcon;
 static NOTIFYICONDATA TrayIconData;
 static unsigned int TrayIconState;
@@ -426,6 +426,23 @@ int GUIStopThread() {
 }
 	
 void GUIElementsDraw(HWND hwnd) {
+	const char* SysUTCstr;
+	char StrBuff[128];
+	struct tm* SysUTCtm;
+	time_t SysUTC;
+
+	/* System UTC Time */
+	time(&SysUTC);
+	SysUTCtm = gmtime(&SysUTC);
+	SysUTCstr = asctime(SysUTCtm);
+	
+	if(Stats.NextSyncChanged == 1 && GetOperMode()) {
+		debuglog(DEBUG_NOTICE,"Time to redraw NextSync: %u\n",Stats.SyncNext);
+		sprintf(StrBuff,"Next Synchronization %u seconds",Stats.SyncNext);
+		SetDlgItemText(hwnd,IDT_NEXTSYNC,StrBuff);
+		Stats.NextSyncChanged = 0;
+	}
+	SetDlgItemText(hwnd,IDT_SYSUTC,SysUTCstr);
 	debuglog(DEBUG_CAPTURE,"Timer event!\n");
 }	
 
@@ -436,7 +453,7 @@ void GUIOperModeDraw(HWND hwnd, unsigned int AutoMode) {
 	
 	if(AutoMode == 1) {
 		char NextSyncMsg[96];
-		sprintf(NextSyncMsg,"Next synchronization in %u seconds.",5);	
+		sprintf(NextSyncMsg,"Next synchronization in %u seconds.",Stats.SyncNext);	
 		EnableWindow(hBSync,FALSE);
 		SetDlgItemText(hwnd,IDB_MODE,"Manual Mode");	
 		SetDlgItemText(hwnd,IDT_OPERMODE,"Automatic");
@@ -461,7 +478,7 @@ void GUIOperModeDraw(HWND hwnd, unsigned int AutoMode) {
 }
 
 /* Loads the options from the structure into the dialog */
-void GUIOptionsDraw(HWND hwnd,SyncOptions* Sets) {
+void GUIOptionsDraw(HWND hwnd,SyncOptions_t* Sets) {
 	HWND hEUTCOffset = GetDlgItem(hwnd,IDE_UTCOFFSET);	
 	
 	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_RESETCONTENT,0,0);
@@ -525,7 +542,7 @@ void GUIOptionsDraw(HWND hwnd,SyncOptions* Sets) {
 }
 
 /* Saves the options from the dialog into the structure */
-void GUIOptionsSave(HWND hwnd,SyncOptions* Sets) {
+void GUIOptionsSave(HWND hwnd,SyncOptions_t* Sets) {
 	if(SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_GETCHECK,0,0) == BST_CHECKED)
 		Sets->StartMinimized = 1;
 	else

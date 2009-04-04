@@ -28,4 +28,8 @@
 #define IDB_OPTIONS								1103
 #define IDT_NOMANUAL							1104
 #define IDT_OPERMODE							1105	
-#define IDT_NEXTSYNC							1106
+#define IDT_NEXTSYNC							1053
+#define IDT_SYSUTC								1130
+#define IDT_SIMUTC								1131
+#define IDT_SIMSTATUS							1132
+#define IDT_LASTSYNC							1133

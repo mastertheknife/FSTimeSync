@@ -18,20 +18,23 @@ CAPTION "FS Time Sync"
 FONT 8, "Ms Shell Dlg 2", 0, 0, 1
 {
     LTEXT           "FS Time Sync v1.0 by mastertheknife", IDC_STATIC, 5, 140, 120, 8, SS_LEFT
-    LTEXT           "Flight Simulator Status: Not Running", IDC_STATIC, 5, 6, 186, 8, SS_LEFT
+    LTEXT           "Flight Simulator Status:", IDC_STATIC, 5, 6, 74, 8, SS_LEFT
+	LTEXT			"Not Running", IDT_SIMSTATUS, 81, 6, 110, 8, SS_LEFT
     LTEXT           "Operating Mode:", IDC_STATIC, 5, 58, 54, 8, SS_LEFT
     LTEXT           "%ModeText%", IDT_OPERMODE, 61, 58, 50, 8, SS_LEFT
     LTEXT           "Manual synchronization is not possible in automatic mode.", IDT_NOMANUAL, 5, 67, 186, 8, SS_LEFT
-    LTEXT           "Next synchronization in 2 seconds.", IDT_NEXTSYNC, 5, 109, 190, 25, SS_LEFT
-    LTEXT           "Last synchronized at 12:55:22 PM", IDC_STATIC, 5, 98, 186, 8, SS_LEFT
-    LTEXT           "Flight Simulator UTC Time: ", IDC_STATIC, 5, 19, 186, 8, SS_LEFT
-    LTEXT           "System UTC Time:", IDC_STATIC, 5, 32, 186, 8, SS_LEFT
-    LTEXT           "Synchronization status: 100% sychnorized", IDC_STATIC, 5, 45, 140, 8, SS_LEFT
+    LTEXT           "Last synchronized at 12:55:22 PM", IDT_LASTSYNC, 5, 98, 186, 8, SS_LEFT
+    LTEXT           "Flight Simulator UTC Time:", IDC_STATIC, 5, 19, 83, 8, SS_LEFT
+    LTEXT			"N/A", IDT_SIMUTC, 91, 19, 100, 8, SS_LEFT
+    LTEXT           "System UTC Time:", IDC_STATIC, 5, 32, 58, 8, SS_LEFT
+	LTEXT			"%SysUTCTime%", IDT_SYSUTC, 65, 32, 126, 8, SS_LEFT
+    LTEXT           "Synchronization Status: 100% sychnorized", IDC_STATIC, 5, 45, 140, 8, SS_LEFT
     PUSHBUTTON      "Options", IDB_OPTIONS, 4, 80, 32, 14, BS_PUSHBUTTON
     PUSHBUTTON      "Sync Now", IDB_SYNCNOW, 38, 80, 96, 14, BS_PUSHBUTTON
     PUSHBUTTON      "%ModeBTN%", IDB_MODE, 136, 80, 58, 14, BS_PUSHBUTTON
     DEFPUSHBUTTON   "OK", IDB_OK, 144, 137, 50, 14, BS_DEFPUSHBUTTON
     CONTROL         "", IDP_SYNCSTATUS, PROGRESS_CLASS, 0, 152, 45, 41, 9
+    LTEXT           "Next synchronization in 2 seconds.", IDT_NEXTSYNC, 5, 109, 190, 25, SS_LEFT
     CONTROL         "", IDP_NEXTSYNC, PROGRESS_CLASS, 0, 5, 120, 188, 13
 }
 

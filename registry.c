@@ -3,8 +3,8 @@
 #include "registry.h"
 #include "main.h"
 
-void CopySettings(SyncOptions* dest, const SyncOptions* src) {
-	memcpy(dest,src,sizeof(SyncOptions));
+void CopySettings(SyncOptions_t* dest, const SyncOptions_t* src) {
+	memcpy(dest,src,sizeof(SyncOptions_t));
 }
 
 int RegistryStartup() {
@@ -15,7 +15,7 @@ int RegistryShutdown() {
 	return 1;
 }
 	
-int RegistryReadSettings(SyncOptions* ReadSettings) {
+int RegistryReadSettings(SyncOptions_t* ReadSettings) {
 	HKEY hRegKey = NULL;
 	LONG nRegResult;
 	DWORD dwSize = sizeof(DWORD);
@@ -99,7 +99,7 @@ int RegistryReadSettings(SyncOptions* ReadSettings) {
 }
 
 
-int RegistryWriteSettings(SyncOptions* WriteSettings) {
+int RegistryWriteSettings(SyncOptions_t* WriteSettings) {
 	HKEY hRegKey = NULL;	
 	DWORD dwTemp; /* Used for convert the WORDs to DWORDs of the hotkeys */
 		

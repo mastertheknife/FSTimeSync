@@ -1,3 +1,4 @@
+#define SLEEP_DURATION 100
 #include "globalinc.h"
 #include "debug.h"
 #include "main.h"
@@ -8,9 +9,11 @@
 #include <commctrl.h>
 
 /* Globals */
-SyncOptions Settings = {0,0,0,0,0,0,MAKEWORD(VK_F6,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(VK_F7,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* The options! */
-SyncOptions Defaults = {0,0,0,1,1,10}; /* Default options */
+SyncOptions_t Settings = {0,0,0,0,0,0,MAKEWORD(VK_F6,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(VK_F7,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* The options! */
+SyncOptions_t Defaults = {0,0,0,1,1,10}; /* Default options */
 CRITICAL_SECTION SettingsCS; /* Critical section to protect the options structure */
+CRITICAL_SECTION StatsCS; /* This one to protect the stats */
+SyncStats_t Stats;
 
 static unsigned int AutoSync; /* Runtime setting controlling manual or auto mode */
 volatile unsigned int bQuit; /* If set to 1, program exists */
@@ -25,6 +28,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 
 	/* Initialize the critical section and perform startup */
 	InitializeCriticalSection(&SettingsCS);
+	InitializeCriticalSection(&StatsCS);
 	DebugStartup();
 	RegistryStartup();
  	GUIStartup();
@@ -34,15 +38,37 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 	/* Set the operating mode (manual or auto) based on the setting */
  	SetOperMode(Settings.AutoOnStart);
 	
+	Stats.LastSync = time(NULL);
+	Stats.SimStatus = 0;
+	
 	/* Start the GUI Thread, based on the Start Minimized setting */
 	if(Settings.StartMinimized == 1)
 		GUIStartThread(SW_MINIMIZE);
 	else	
 		GUIStartThread(nCmdShow);	
 			 		
+	DWORD SyncCounter = 0;
+	DWORD NextSync;
 	while(!bQuit) {
-		Sleep(25);
+		if(GetOperMode()) {
+			if(SyncCounter >= (Settings.AutoSyncInterval*1000)) {
+				/* Sync code here */
+				Stats.LastSync = time(NULL);
+				Stats.LastSyncChanged = 1; 
+				SyncCounter = 0;
+			}
+			DWORD i;
+			for(i=0;i<Settings.AutoSyncInterval;i++) {
+				if(SyncCounter == i*1000) {
+					Stats.SyncNext = Settings.AutoSyncInterval-i;
+					Stats.NextSyncChanged = 1;
+				}
+			}	
+		}		
+		SyncCounter += SLEEP_DURATION;
+		Sleep(SLEEP_DURATION);
 	}
+	
 	
 	/* Stop the GUI thread, or at least wait for it to close */
 	GUIStopThread();
