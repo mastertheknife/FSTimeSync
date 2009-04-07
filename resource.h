@@ -16,7 +16,7 @@
 #define IDH_OPERMODEHOTKEY                      1006
 #define IDC_AUTOSYNCSTARTUP                     1007
 #define IDC_STARTMINIMIZED                      1008
-#define IDC_DAYLIGHTSAVING                      1009
+#define IDC_FUTUREOPT3	                        1009
 #define IDC_UTCOFFSET                           1011
 #define IDE_UTCOFFSET                           1012
 #define IDH_MANSYNCHOTKEY                       1014
@@ -35,3 +35,4 @@
 #define IDT_SIMSTATUS                           1132
 #define IDT_LASTSYNC                            1133
 #define IDT_TOSYNC								1134
+#define IDT_SYNCSTATUS							1135

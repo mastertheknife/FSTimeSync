@@ -45,38 +45,43 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 	
 	/* Main program loop */
 	while(!GetRTVal(FST_QUIT)) {
-		EnterCriticalSection(&ProgramDataCS);	
+		time_t CurrentTime;
+		EnterCriticalSection(&ProgramDataCS);
+		CurrentTime = time(NULL); /* Saves multiple expensive calls to time() */
+			
 		if(GetRTVal(FST_AUTOMODE)) {
 			/* Automatic mode */		
 			/* Check if switched to faster synch interval and there's too long to wait */
-			if((Stats.SyncNext-time(NULL)) > Settings.AutoSyncInterval) {
-				Stats.SyncNext = time(NULL)+Settings.AutoSyncInterval;
+			if((Stats.SyncNext-CurrentTime) > Settings.AutoSyncInterval) {
+				Stats.SyncNext = CurrentTime+Settings.AutoSyncInterval;
 				Stats.SyncInterval = Settings.AutoSyncInterval; /* Progress bar is drawn based on current synch, not next one */
 			}
 			/* Check if switched to slower interval */
 			if(Stats.SyncInterval < Settings.AutoSyncInterval) {
-				Stats.SyncNext = time(NULL)+Settings.AutoSyncInterval;
+				Stats.SyncNext = CurrentTime+Settings.AutoSyncInterval;
 				Stats.SyncInterval = Settings.AutoSyncInterval; /* Progress bar is drawn based on current synch, not next one */
 			}	
-			if(Stats.SyncNext <= time(NULL)) {
+			if(Stats.SyncNext <= CurrentTime) {
 				/* Sync code here */
-				Stats.SyncLast = time(NULL);
-				Stats.SyncNext = time(NULL)+Settings.AutoSyncInterval;
+				Stats.SyncLast = time(&CurrentTime); /* Sync takes time, update the time on the way */
+				Stats.SyncNext = CurrentTime+Settings.AutoSyncInterval;
 				Stats.SyncInterval = Settings.AutoSyncInterval;
 				Stats.SyncLastModified = 1;
 			}
 		} else {
 			/* Manual mode */
-			Stats.SyncNext = time(NULL)+Settings.AutoSyncInterval;
+			Stats.SyncNext = CurrentTime+Settings.AutoSyncInterval;
 			Stats.SyncInterval = Settings.AutoSyncInterval;
 			if(GetRTVal(FST_SYNCNOW)) {
 				/* Sync code here */
 				SetRTVal(FST_SYNCNOW, 0); /* Clear the event */
-				Stats.SyncLast = time(NULL);
+				Stats.SyncLast = time(&CurrentTime);
 				Stats.SyncLastModified = 1;
 			}
 		}
-		
+		Stats.SimUTCTime = CurrentTime;
+		Stats.SysLocalTime = CurrentTime;
+	
 		LeaveCriticalSection(&ProgramDataCS);		
 		Sleep(SLEEP_DURATION);
 	}

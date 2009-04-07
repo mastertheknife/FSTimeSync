@@ -26,7 +26,7 @@ int RegistryReadSettings(SyncOptions_t* ReadSettings) {
 		ReadSettings->StartMinimized = Defaults.StartMinimized;
 		ReadSettings->SystemUTCOffsetState = Defaults.SystemUTCOffsetState;
 		ReadSettings->SystemUTCOffset = Defaults.SystemUTCOffset;
-		ReadSettings->DaylightSaving = Defaults.DaylightSaving;
+		/* ReadSettings->FutureSetting = Defaults.FutureSetting; */
 		ReadSettings->AutoOnStart = Defaults.AutoOnStart;	
 		ReadSettings->AutoSyncInterval = Defaults.AutoSyncInterval;
 		return 0;
@@ -53,12 +53,14 @@ int RegistryReadSettings(SyncOptions_t* ReadSettings) {
 		ReadSettings->SystemUTCOffset = Defaults.SystemUTCOffset;
 	}
 	
-	if((nRegResult = RegQueryValueEx(hRegKey,"DaylightSaving",0,NULL,(LPVOID)&(ReadSettings->DaylightSaving),&dwSize)) != ERROR_SUCCESS) {
+	/* Reserved for future option, previously was Daylight Saving
+	if((nRegResult = RegQueryValueEx(hRegKey,"FutureSetting",0,NULL,(LPVOID)&(ReadSettings->FutureSetting),&dwSize)) != ERROR_SUCCESS) {
 		if(nRegResult != ERROR_FILE_NOT_FOUND)
-			debuglog(DEBUG_WARNING,"Failed reading DaylightSaving registry value.\n");
+			debuglog(DEBUG_WARNING,"Failed reading FutureSetting registry value.\n");
 			
-		ReadSettings->DaylightSaving = Defaults.DaylightSaving;
+		ReadSettings->FutureSetting = Defaults.FutureSetting;
 	}	
+	*/
 	
 	if((nRegResult = RegQueryValueEx(hRegKey,"AutoOnStart",0,NULL,(LPVOID)&(ReadSettings->AutoOnStart),&dwSize)) != ERROR_SUCCESS) {
 		if(nRegResult != ERROR_FILE_NOT_FOUND)
@@ -120,9 +122,11 @@ int RegistryWriteSettings(SyncOptions_t* WriteSettings) {
 		debuglog(DEBUG_WARNING,"Failed writing SystemUTCOffset registry value.\n");		
 	}
 	
-	if(RegSetValueEx(hRegKey,"DaylightSaving",0,REG_DWORD,(LPVOID)&(WriteSettings->DaylightSaving),sizeof(DWORD)) != ERROR_SUCCESS) {
-		debuglog(DEBUG_WARNING,"Failed writing DaylightSaving registry value.\n");		
+	/* Reserved for future option, previously was Daylight Saving
+	if(RegSetValueEx(hRegKey,"FutureSetting",0,REG_DWORD,(LPVOID)&(WriteSettings->FutureSetting),sizeof(DWORD)) != ERROR_SUCCESS) {
+		debuglog(DEBUG_WARNING,"Failed writing FutureSetting registry value.\n");		
 	}
+	*/
 	
 	if(RegSetValueEx(hRegKey,"AutoOnStart",0,REG_DWORD,(LPVOID)&(WriteSettings->AutoOnStart),sizeof(DWORD)) != ERROR_SUCCESS) {
 		debuglog(DEBUG_WARNING,"Failed writing AutoOnStart registry value.\n");		

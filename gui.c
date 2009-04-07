@@ -18,7 +18,7 @@ static unsigned int TrayIconState;
 static HMENU TrayMenu;
 static HMENU SubTrayMenu;
 
-LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM lParam) {
+static LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM lParam) {
 	HWND hTemphwnd;
     switch(Message)
     {
@@ -61,9 +61,7 @@ LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM 
         case WM_HOTKEY:
 			switch(wParam) {
 				case 443:
-					/* Sync now only if there's no sync in progress */	
-					if(!GetRTVal(FST_SYNCNOW))
-						SetRTVal(FST_SYNCNOW,TRUE);
+					GUISyncNowEvent();
 					break;
 				case 444: 
 					/* If automatic, change to manual and vice versa. */
@@ -98,8 +96,7 @@ LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM 
 					SetRTVal(FST_QUIT,1);
 					break;
 				case IDM_SYNCNOW:
-					if(!GetRTVal(FST_SYNCNOW))
-						SetRTVal(FST_SYNCNOW,TRUE);
+					GUISyncNowEvent();
 					break;		
 				case IDM_AUTOMATIC:
 					/* If already in automatic mode, do nothing */
@@ -135,7 +132,7 @@ LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM 
 	return 0;
 }
 
-BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam) {
+static BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam) {
 	switch(Message) {
 		case WM_INITDIALOG:
 			{
@@ -187,8 +184,7 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 					}
 					break;	
 				case IDB_SYNCNOW:
-					if(!GetRTVal(FST_SYNCNOW))
-						SetRTVal(FST_SYNCNOW,TRUE);						
+					GUISyncNowEvent();					
 					break;
 				default:
 					return FALSE;
@@ -221,10 +217,14 @@ BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 }
 
 
-BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam) {
+static BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam) {
 	switch(Message) {
 		case WM_INITDIALOG:
 			{				
+				/* TEMPORARY: Hide the reserved option (previously was Daylight Saving) */
+				HWND hOpt3 = GetDlgItem(hwnd,IDC_FUTUREOPT3);
+				ShowWindow(hOpt3,SW_HIDE);				
+				
 				/* Set the icon for this dialog */
 				GUISetDialogIcon(hwnd);
 				
@@ -289,7 +289,7 @@ BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lPar
 	return TRUE;
 }
 
-DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
+static DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 	MSG Message;
 	HINSTANCE hInst;
 	WNDCLASSEX wcex;
@@ -439,26 +439,30 @@ int GUIStopThread() {
 	return 1;
 }
 	
-void GUIElementsUpdate() {
-	const char* SysUTCstr;
-	struct tm* SysUTCtm;
-	time_t SysUTC;
+static void GUIElementsUpdate() {
+	const char* lpstr;
+	struct tm* lptm;
+	time_t ntime;
 	char StrBuff[128];
 	DWORD dwInt;
 
 	EnterCriticalSection(&ProgramDataCS);
 
 	/* System UTC Time */
-	time(&SysUTC);
-	SysUTCtm = gmtime(&SysUTC);
-	SysUTCstr = asctime(SysUTCtm);
-	
-	SetDlgItemText(hMainDlg,IDT_SYSUTC,SysUTCstr);	
+	lptm = gmtime(&Stats.SysLocalTime);
+	lpstr = asctime(lptm);
 
+	/* FS UTC Time */
+	lpstr = ctime(&Stats.SimUTCTime);
+	
+	/* Draw both */
+	SetDlgItemText(hMainDlg,IDT_SYSUTC,lpstr);		
+	SetDlgItemText(hMainDlg,IDT_SIMUTC,lpstr);
+	
 	if(Stats.SyncLastModified) {
 		sprintf(StrBuff,"Last synchronizated in %s",ctime(&Stats.SyncLast));
 		SetDlgItemText(hMainDlg,IDT_LASTSYNC,StrBuff);
-		Stats.SyncLastModified = 0;
+			Stats.SyncLastModified = 0;
 	}
 	
 	if(GetRTVal(FST_AUTOMODE)) {
@@ -475,7 +479,7 @@ void GUIElementsUpdate() {
 	debuglog(DEBUG_CAPTURE,"Timer event!\n");
 }	
 
-void GUIOperModeUpdate() {	
+static void GUIOperModeUpdate() {	
 	HWND hBSync = GetDlgItem(hMainDlg,IDB_SYNCNOW);
 	HWND hTNoManual = GetDlgItem(hMainDlg,IDT_NOMANUAL);
 	HWND hPNextSync = GetDlgItem(hMainDlg,IDP_NEXTSYNC);		
@@ -519,14 +523,14 @@ void GUIOperModeUpdate() {
 }
 
 /* Loads the options from the structure into the dialog */
-void GUIOptionsDraw(HWND hwnd,SyncOptions_t* Sets) {
+static void GUIOptionsDraw(HWND hwnd,SyncOptions_t* Sets) {
 	HWND hEUTCOffset = GetDlgItem(hwnd,IDE_UTCOFFSET);	
 	
 	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_RESETCONTENT,0,0);
-	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"3 seconds");				
-	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"5 seconds");
-	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"10 seconds");			
-	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"30 seconds");
+	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"5 seconds");				
+	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"10 seconds");
+	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"30 seconds");			
+	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"60 seconds");
 	
 	if(Sets->StartMinimized)
 		SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
@@ -542,11 +546,13 @@ void GUIOptionsDraw(HWND hwnd,SyncOptions_t* Sets) {
 		SetDlgItemInt(hwnd,IDE_UTCOFFSET,Sets->SystemUTCOffset,TRUE);	
 		EnableWindow(hEUTCOffset,FALSE);		
 	}
-	
-	if(Sets->DaylightSaving)
-		SendDlgItemMessage(hwnd,IDC_DAYLIGHTSAVING,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
+
+	/* Reserved for future option, previously was Daylight Saving
+	if(Sets->FutureSetting)
+		SendDlgItemMessage(hwnd,IDC_FUTUREOPT3,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
 	else
-		SendDlgItemMessage(hwnd,IDC_DAYLIGHTSAVING,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
+		SendDlgItemMessage(hwnd,IDC_FUTUREOPT3,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
+	*/
 	
 	if(Sets->AutoOnStart)
 		SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
@@ -554,20 +560,20 @@ void GUIOptionsDraw(HWND hwnd,SyncOptions_t* Sets) {
 		SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);																	
 			
 	switch(Sets->AutoSyncInterval) {
-		case 3:
+		case 5:
 			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)0,0);
 			break;
-		case 5:
+		case 10:
 			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)1,0);
 			break;
-		case 10:	
+		case 30:	
 			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)2,0);
 			break;
-		case 30:
+		case 60:
 			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)3,0);
 			break;
 		default:
-			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)2,0);
+			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)1,0);
 			break;			
 	}
 
@@ -583,7 +589,7 @@ void GUIOptionsDraw(HWND hwnd,SyncOptions_t* Sets) {
 }
 
 /* Saves the options from the dialog into the structure */
-void GUIOptionsSave(HWND hwnd,SyncOptions_t* Sets) {
+static void GUIOptionsSave(HWND hwnd,SyncOptions_t* Sets) {
 	if(SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_GETCHECK,0,0) == BST_CHECKED)
 		Sets->StartMinimized = 1;
 	else
@@ -596,11 +602,13 @@ void GUIOptionsSave(HWND hwnd,SyncOptions_t* Sets) {
 		Sets->SystemUTCOffsetState = 0;
 		Sets->SystemUTCOffset = GetDlgItemInt(hwnd,IDE_UTCOFFSET,NULL,TRUE);	
 	}
-	
-	if(SendDlgItemMessage(hwnd,IDC_DAYLIGHTSAVING,BM_GETCHECK,0,0) == BST_CHECKED)
-		Sets->DaylightSaving = 1;
+
+	/* Reserved for future option, previously was Daylight Saving	
+	if(SendDlgItemMessage(hwnd,IDC_FUTUREOPT3,BM_GETCHECK,0,0) == BST_CHECKED)
+		Sets->FutureSetting = 1;
 	else
-		Sets->DaylightSaving = 0;	
+		Sets->FutureSetting = 0;
+	*/
 			
 	if(SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_GETCHECK,0,0) == BST_CHECKED)
 		Sets->AutoOnStart = 1;
@@ -609,16 +617,16 @@ void GUIOptionsSave(HWND hwnd,SyncOptions_t* Sets) {
 		
 	switch(SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_GETCURSEL,0,0)) {
 		case 0:
-			Sets->AutoSyncInterval = 3;
-			break;
-		case 1:
 			Sets->AutoSyncInterval = 5;
 			break;
-		case 2:	
+		case 1:
 			Sets->AutoSyncInterval = 10;
 			break;
-		case 3:
+		case 2:	
 			Sets->AutoSyncInterval = 30;
+			break;
+		case 3:
+			Sets->AutoSyncInterval = 60;
 			break;
 		default:
 			Sets->AutoSyncInterval = Defaults.AutoSyncInterval;
@@ -631,7 +639,7 @@ void GUIOptionsSave(HWND hwnd,SyncOptions_t* Sets) {
 	
 }
 
-void GUITrayUpdate() {
+static void GUITrayUpdate() {
 	if(GetRTVal(FST_AUTOMODE))
 		sprintf(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Automatic\nInterval: %u seconds",10);
 	else
@@ -645,7 +653,7 @@ void GUITrayUpdate() {
 	}
 }
 
-void GUIOpenMain() {
+static void GUIOpenMain() {
 	HWND hTemphwnd;
 	if(hMainDlg == NULL) {
 		/* Window doesn't exist, let's create it */
@@ -660,7 +668,16 @@ void GUIOpenMain() {
 	}
 }
 
-void GUISetDialogIcon(HWND hwnd) {
+static void GUISetDialogIcon(HWND hwnd) {
 	SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
 	SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+}
+
+static void GUISyncNowEvent() {
+	/* Checking for manual mode first */
+	if(!GetRTVal(FST_AUTOMODE)) {
+		/* Sync now only if there's no sync in progress */	
+		if(!GetRTVal(FST_SYNCNOW))
+			SetRTVal(FST_SYNCNOW,TRUE);
+	}
 }

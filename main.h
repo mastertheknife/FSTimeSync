@@ -11,7 +11,7 @@ typedef struct tagSyncOptions {
 	DWORD StartMinimized;	
 	DWORD SystemUTCOffsetState;
 	LONG SystemUTCOffset;
-	DWORD DaylightSaving;
+	DWORD FutureSetting00;
 	DWORD AutoOnStart;	
 	DWORD AutoSyncInterval;
 	WORD ManSyncHotkey;
@@ -24,6 +24,8 @@ typedef struct tagSyncStats {
 	time_t SyncNext;
 	time_t SyncLast;
 	DWORD SyncLastModified;
+	time_t SimUTCTime;
+	time_t SysLocalTime;
 } SyncStats_t;
 
 typedef struct tagRV {
