@@ -8,13 +8,15 @@ static BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPAR
 static BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam);
 static LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM lParam);
 
+/* Globals */
 int GUIStartup(void);
 int GUIShutdown(void);
 int GUIStartThread(int nCmdShow);
 int GUIStopThread();
+extern HWND hDummyWindow;
 
 /* Internal functions */
-static void GUIOperModeUpdate();
+static void GUIUpdate();
 static void GUIElementsUpdate();
 static void GUIOptionsDraw(HWND hwnd,SyncOptions_t* Sets);
 static void GUIOptionsSave(HWND hwnd,SyncOptions_t* Sets);

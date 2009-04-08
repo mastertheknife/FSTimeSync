@@ -2,7 +2,8 @@
 #define IDC_STATIC (-1)
 #endif
 
-#define IDI_ICON                                2
+#define IDI_ICONBLUE15                          2
+#define IDI_ICONGRAY							5
 #define IDD_OPTIONS                             103
 #define IDD_MAIN                                105
 #define IDM_RESTORE                             200

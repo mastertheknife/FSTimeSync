@@ -48,40 +48,62 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		time_t CurrentTime;
 		EnterCriticalSection(&ProgramDataCS);
 		CurrentTime = time(NULL); /* Saves multiple expensive calls to time() */
+		
+		/* Code for testing purposes */
+		SHORT KeyState1,KeyState2;	
+		KeyState1 = GetAsyncKeyState(VK_SHIFT | VK_F2);
+		if(KeyState1 & 0x8000) {
+			Stats.SimStatus = 1;
+			PostMessage(hDummyWindow,WM_USER+1,10,0);
+		}
+		
+		KeyState2 = GetAsyncKeyState(VK_SHIFT | VK_F3);
+		if(KeyState2 & 0x8000) {
+			Stats.SimStatus = 0;
+			PostMessage(hDummyWindow,WM_USER+1,10,0);
+		}	
 			
-		if(GetRTVal(FST_AUTOMODE)) {
-			/* Automatic mode */		
-			/* Check if switched to faster synch interval and there's too long to wait */
-			if((Stats.SyncNext-CurrentTime) > Settings.AutoSyncInterval) {
-				Stats.SyncNext = CurrentTime+Settings.AutoSyncInterval;
-				Stats.SyncInterval = Settings.AutoSyncInterval; /* Progress bar is drawn based on current synch, not next one */
-			}
-			/* Check if switched to slower interval */
-			if(Stats.SyncInterval < Settings.AutoSyncInterval) {
-				Stats.SyncNext = CurrentTime+Settings.AutoSyncInterval;
-				Stats.SyncInterval = Settings.AutoSyncInterval; /* Progress bar is drawn based on current synch, not next one */
-			}	
-			if(Stats.SyncNext <= CurrentTime) {
-				/* Sync code here */
-				Stats.SyncLast = time(&CurrentTime); /* Sync takes time, update the time on the way */
-				Stats.SyncNext = CurrentTime+Settings.AutoSyncInterval;
-				Stats.SyncInterval = Settings.AutoSyncInterval;
-				Stats.SyncLastModified = 1;
-			}
-		} else {
-			/* Manual mode */
-			Stats.SyncNext = CurrentTime+Settings.AutoSyncInterval;
-			Stats.SyncInterval = Settings.AutoSyncInterval;
-			if(GetRTVal(FST_SYNCNOW)) {
-				/* Sync code here */
-				SetRTVal(FST_SYNCNOW, 0); /* Clear the event */
-				Stats.SyncLast = time(&CurrentTime);
-				Stats.SyncLastModified = 1;
+		/* System UTC time */
+		Stats.SysLocalTime = CurrentTime;
+		if(Settings.SystemUTCOffsetState)
+			Stats.SysLocalTime += Settings.SystemUTCOffset*60;
+
+		/* FS UTC time, temporary assigned system local time */
+		Stats.SimUTCTime = CurrentTime;	
+
+		/* Only proceed if sim is connected */
+		if(Stats.SimStatus) {	
+			if(GetRTVal(FST_AUTOMODE)) {
+				/* Automatic mode */		
+				/* Check if switched to faster synch interval and there's too long to wait */
+				if((Stats.SyncNext-CurrentTime) > Settings.AutoSyncInterval) {
+					Stats.SyncNext = CurrentTime+Settings.AutoSyncInterval;
+					Stats.SyncInterval = Settings.AutoSyncInterval; /* Progress bar is drawn based on current synch, not next one */
+				}
+				/* Check if switched to slower interval */
+				if(Stats.SyncInterval < Settings.AutoSyncInterval) {
+					Stats.SyncNext = CurrentTime+Settings.AutoSyncInterval;
+					Stats.SyncInterval = Settings.AutoSyncInterval; /* Progress bar is drawn based on current synch, not next one */
+				}	
+				if(Stats.SyncNext <= CurrentTime) {
+					/* Sync code here */
+					Stats.SyncLast = time(&CurrentTime); /* Sync takes time, update the time on the way */
+					Stats.SyncNext = CurrentTime+Settings.AutoSyncInterval;
+					Stats.SyncInterval = Settings.AutoSyncInterval;
+					Stats.SyncLastModified = 1;
+				}
+			} else {
+				/* Manual mode */
+				Stats.SyncInterval = 0;
+				if(GetRTVal(FST_SYNCNOW)) {
+					/* Sync code here */
+					SetRTVal(FST_SYNCNOW, 0); /* Clear the event */
+					Stats.SyncLast = time(&CurrentTime);
+					Stats.SyncLastModified = 1;
+				}
 			}
 		}
-		Stats.SimUTCTime = CurrentTime;
-		Stats.SysLocalTime = CurrentTime;
-	
+
 		LeaveCriticalSection(&ProgramDataCS);		
 		Sleep(SLEEP_DURATION);
 	}

@@ -1,5 +1,6 @@
 #define _WIN32_IE 0x0500
 #define TRAYICONMSG WM_USER+2
+#define MAINSIGNALMSG WM_USER+1
 #include "globalinc.h"
 #include "debug.h"
 #include "gui.h"
@@ -7,12 +8,13 @@
 #include "sync.h"
 #include <commctrl.h>
 
+HWND hDummyWindow = NULL;
 static HWND hMainDlg = NULL;
-static HWND hDummyWindow = NULL;
 static HANDLE hGUIThread = NULL;
 static UINT_PTR hDrawTimer;
 static SyncOptions_t PendingSettings;
 static HICON hIcon;
+static HICON hIconGray;
 static NOTIFYICONDATA TrayIconData;
 static unsigned int TrayIconState;
 static HMENU TrayMenu;
@@ -22,6 +24,10 @@ static LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, 
 	HWND hTemphwnd;
     switch(Message)
     {
+		case MAINSIGNALMSG:
+			if(wParam == 10) 
+				GUIUpdate();
+			break;	
 		case TRAYICONMSG:
 			switch(lParam) {
 				case WM_CONTEXTMENU:
@@ -35,7 +41,10 @@ static LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, 
 							EnableMenuItem(SubTrayMenu,2,MF_BYPOSITION | MF_GRAYED);
 							CheckMenuRadioItem(SubTrayMenu,3,4,3,MF_BYPOSITION);
 						} else { 
-							EnableMenuItem(SubTrayMenu,2,MF_BYPOSITION | MF_ENABLED);
+							if(Stats.SimStatus) 
+								EnableMenuItem(SubTrayMenu,2,MF_BYPOSITION | MF_ENABLED);
+							else					
+								EnableMenuItem(SubTrayMenu,2,MF_BYPOSITION | MF_GRAYED);
 							CheckMenuRadioItem(SubTrayMenu,3,4,4,MF_BYPOSITION);
 						}
 						
@@ -69,16 +78,10 @@ static LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, 
 						SetRTVal(FST_AUTOMODE,FALSE);
 						/* If the dialog exists, redraw will also update the tray,
 				   		But if it doesn't, we have to update the tray ourselves */
-						if(hMainDlg)
-							GUIOperModeUpdate();
-						else
-							GUITrayUpdate();
+						GUIUpdate();
 					} else {
-						SetRTVal(FST_AUTOMODE,TRUE);					
-						if(hMainDlg)
-							GUIOperModeUpdate();
-						else
-							GUITrayUpdate();	
+						SetRTVal(FST_AUTOMODE,TRUE);
+						GUIUpdate();
 					}
 					break;
 				default:
@@ -104,10 +107,7 @@ static LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, 
 						break;
 
 					SetRTVal(FST_AUTOMODE,TRUE);
-					if(hMainDlg)
-						GUIOperModeUpdate();
-					else
-						GUITrayUpdate();
+					GUIUpdate();
 									
 					break;
 				case IDM_MANUAL:
@@ -116,11 +116,7 @@ static LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, 
 						break;
 
 					SetRTVal(FST_AUTOMODE,FALSE);
-					if(hMainDlg)
-						GUIOperModeUpdate();
-					else
-						GUITrayUpdate();
-						
+					GUIUpdate();
 					break;
 				default:
 					return DefWindowProc(hwnd,Message,wParam,lParam);	
@@ -146,7 +142,7 @@ static BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 				hMainDlg = hwnd;
 												
 				/* Draw the dialog operating mode (Auto or manual) */
-				GUIOperModeUpdate();
+				GUIUpdate();
 
 				/* Draw the other elements */
 				GUIElementsUpdate();
@@ -176,10 +172,10 @@ static BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 						/* Operating Mode changed. Update the runtime setting and modify the dialog depending on the new mode */
 						if(GetRTVal(FST_AUTOMODE)) {
 							SetRTVal(FST_AUTOMODE,FALSE);
-							GUIOperModeUpdate();
+							GUIUpdate();
 						} else {
 							SetRTVal(FST_AUTOMODE,TRUE);
-							GUIOperModeUpdate();
+							GUIUpdate();
 						}											 	
 					}
 					break;	
@@ -316,15 +312,11 @@ static DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 	TrayIconData.hWnd = hDummyWindow;
 	TrayIconData.uID = 120988;
 	TrayIconData.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE;
-	TrayIconData.hIcon = hIcon;
+	TrayIconData.hIcon = hIconGray;
 	TrayIconData.uCallbackMessage = TRAYICONMSG;	
 	TrayIconData.uVersion = NOTIFYICON_VERSION; /* Windows 2000 or later */
-	
-	if(GetRTVal(FST_AUTOMODE))
-		sprintf(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Automatic\nInterval: %u seconds",10);
-	else
-		strcpy(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Manual");	
-	
+	strcpy(TrayIconData.szTip,"");
+
 	/* Creating the tray icon */
 	if(!Shell_NotifyIcon(NIM_ADD,&TrayIconData)) {
 		debuglog(DEBUG_ERROR,"Failed creating tray icon!\n");
@@ -334,6 +326,8 @@ static DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 		debuglog(DEBUG_ERROR,"Failed setting tray icon version!\n");
 	}	
 	TrayIconState = 1; /* Tray icon ready */
+
+	GUITrayUpdate(); /* Update the tray icon, mainly the tooltip */
 	
 	/* Register the hotkeys */
 	HotkeysRegister(hDummyWindow, Settings.ManSyncHotkey, Settings.ModeSwitchHotkey);
@@ -386,10 +380,11 @@ int GUIStartup(void) {
 	/* Initialize the common controls */
 	InitCommonControls();	
 	
-	hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON));
-		
-	if(hIcon == NULL)
-		debuglog(DEBUG_ERROR,"Failed to load icon!\n");	
+	hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICONBLUE15));
+	hIconGray = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICONGRAY));	
+	
+	if(hIcon == NULL || hIconGray == NULL)
+		debuglog(DEBUG_ERROR,"Failed to load icon(s)!\n");	
 	
 	if(!(TrayMenu = LoadMenu(GetModuleHandle(NULL),MAKEINTRESOURCE(IDM_TRAYMENU))))
 		debuglog(DEBUG_ERROR,"Failed to load tray menu!\n");
@@ -402,8 +397,9 @@ int GUIStartup(void) {
 
 int GUIShutdown(void) {
 
-	/* Close the handle to the icon */
-	CloseHandle(hIcon);
+	/* Unload the icons */
+	DestroyIcon(hIcon);
+	DestroyIcon(hIconGray);
 
 	/* Close the handles to the menus */
 	CloseHandle(SubTrayMenu);
@@ -451,13 +447,13 @@ static void GUIElementsUpdate() {
 	/* System UTC Time */
 	lptm = gmtime(&Stats.SysLocalTime);
 	lpstr = asctime(lptm);
-
-	/* FS UTC Time */
-	lpstr = ctime(&Stats.SimUTCTime);
-	
-	/* Draw both */
 	SetDlgItemText(hMainDlg,IDT_SYSUTC,lpstr);		
-	SetDlgItemText(hMainDlg,IDT_SIMUTC,lpstr);
+
+	/* FS UTC Time - only if connected to FS */
+	if(Stats.SimStatus) {
+		lpstr = ctime(&Stats.SimUTCTime);	
+		SetDlgItemText(hMainDlg,IDT_SIMUTC,lpstr);
+	}
 	
 	if(Stats.SyncLastModified) {
 		sprintf(StrBuff,"Last synchronizated in %s",ctime(&Stats.SyncLast));
@@ -466,12 +462,14 @@ static void GUIElementsUpdate() {
 	}
 	
 	if(GetRTVal(FST_AUTOMODE)) {
-		dwInt = Stats.SyncNext - time(NULL);
-		sprintf(StrBuff,"Next synchronization in %u seconds.",dwInt);
-		SetDlgItemText(hMainDlg,IDT_NEXTSYNC,StrBuff);
-		dwInt = Stats.SyncInterval - dwInt;
-		SendDlgItemMessage(hMainDlg,IDP_NEXTSYNC, PBM_SETRANGE, 0, (LPARAM)MAKELPARAM(0, Stats.SyncInterval)); 
-		SendDlgItemMessage(hMainDlg,IDP_NEXTSYNC, PBM_SETPOS, (WPARAM)dwInt, 0); 
+		if(Stats.SimStatus) {			
+			dwInt = Stats.SyncNext - time(NULL);
+			sprintf(StrBuff,"Next synchronization in %u seconds.",dwInt);
+			SetDlgItemText(hMainDlg,IDT_NEXTSYNC,StrBuff);
+			dwInt = Stats.SyncInterval - dwInt;
+			SendDlgItemMessage(hMainDlg,IDP_NEXTSYNC, PBM_SETRANGE, 0, (LPARAM)MAKELPARAM(0, Stats.SyncInterval)); 
+			SendDlgItemMessage(hMainDlg,IDP_NEXTSYNC, PBM_SETPOS, (WPARAM)dwInt, 0); 
+		}
 	}
 	
 	LeaveCriticalSection(&ProgramDataCS);
@@ -479,35 +477,60 @@ static void GUIElementsUpdate() {
 	debuglog(DEBUG_CAPTURE,"Timer event!\n");
 }	
 
-static void GUIOperModeUpdate() {	
+static void GUIUpdate() {	
 	HWND hBSync = GetDlgItem(hMainDlg,IDB_SYNCNOW);
 	HWND hTNoManual = GetDlgItem(hMainDlg,IDT_NOMANUAL);
 	HWND hPNextSync = GetDlgItem(hMainDlg,IDP_NEXTSYNC);		
 	HWND hToSync = GetDlgItem(hMainDlg,IDT_TOSYNC);
 	HWND hNextSync = GetDlgItem(hMainDlg,IDT_NEXTSYNC);
+	HWND hTLastSync = GetDlgItem(hMainDlg,IDT_LASTSYNC);
+		
+	/* Only update the window if main window exists */	
+	if(hMainDlg) {	
+		
+		EnterCriticalSection(&ProgramDataCS);
 	
-	EnterCriticalSection(&ProgramDataCS);
-	
-	if(GetRTVal(FST_AUTOMODE)) {	
-		EnableWindow(hBSync,FALSE);
-		ShowWindow(hToSync,SW_HIDE);
-		ShowWindow(hNextSync,SW_SHOW);
-		ShowWindow(hPNextSync,SW_SHOW);								
-		ShowWindow(hTNoManual,SW_SHOW);			
-		SetDlgItemText(hMainDlg,IDB_MODE,"Manual Mode");	
-		SetDlgItemText(hMainDlg,IDT_OPERMODE,"Automatic");										
-	} else {
-		EnableWindow(hBSync,TRUE);
-		ShowWindow(hToSync,SW_SHOW);
-		ShowWindow(hNextSync,SW_HIDE);		
-		ShowWindow(hPNextSync,SW_HIDE);														
-		ShowWindow(hTNoManual,SW_HIDE);
-		SetDlgItemText(hMainDlg,IDB_MODE,"Automatic Mode");	
-		SetDlgItemText(hMainDlg,IDT_OPERMODE,"Manual");
-		SetDlgItemText(hMainDlg,IDT_TOSYNC,"To synchronizate the flight simulator clock, click on the\nSync Now button or the assigned hotkey (see options).");	
-	}
-	
-	LeaveCriticalSection(&ProgramDataCS);
+		if(GetRTVal(FST_AUTOMODE)) {	
+			if(Stats.SimStatus) {
+				ShowWindow(hToSync,SW_HIDE);
+				ShowWindow(hNextSync,SW_SHOW);
+				ShowWindow(hPNextSync,SW_SHOW);
+				SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"Running");			
+			} else {
+				SetDlgItemText(hMainDlg,IDT_SIMUTC,"N/A");			
+				SetDlgItemText(hMainDlg,IDT_SYNCSTATUS,"N/A");
+				SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"Not Running");
+				ShowWindow(hPNextSync,SW_HIDE);
+				ShowWindow(hNextSync,SW_HIDE);
+				SetDlgItemText(hMainDlg,IDT_TOSYNC,"No simulator detected running. Please start your Microsoft Flight Simulator.\n");				
+				ShowWindow(hToSync,SW_SHOW);
+			}	
+			EnableWindow(hBSync,FALSE);							
+			ShowWindow(hTNoManual,SW_SHOW);			
+			SetDlgItemText(hMainDlg,IDB_MODE,"Manual Mode");	
+			SetDlgItemText(hMainDlg,IDT_OPERMODE,"Automatic");										
+		} else {
+			if(Stats.SimStatus) {
+				EnableWindow(hBSync,TRUE);
+				SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"Running");
+				SetDlgItemText(hMainDlg,IDT_TOSYNC,"To synchronizate the flight simulator clock, click on the\nSync Now button or the assigned hotkey (see options).");
+			} else {
+				SetDlgItemText(hMainDlg,IDT_SIMUTC,"N/A");			
+				SetDlgItemText(hMainDlg,IDT_SYNCSTATUS,"N/A");
+				SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"Not Running");
+				EnableWindow(hBSync,FALSE);
+				SetDlgItemText(hMainDlg,IDT_TOSYNC,"No simulator detected running. Please start your Microsoft Flight Simulator.\n");	
+			}
+			ShowWindow(hPNextSync,SW_HIDE);		
+			ShowWindow(hNextSync,SW_HIDE);		
+			ShowWindow(hTNoManual,SW_HIDE);		
+			ShowWindow(hToSync,SW_SHOW);																
+			SetDlgItemText(hMainDlg,IDB_MODE,"Automatic Mode");	
+			SetDlgItemText(hMainDlg,IDT_OPERMODE,"Manual");
+		}
+
+		LeaveCriticalSection(&ProgramDataCS);
+	} 
 	
 	/* Update the GUI elements such as next sync and progress bar */
 	GUIElementsUpdate();
@@ -640,10 +663,17 @@ static void GUIOptionsSave(HWND hwnd,SyncOptions_t* Sets) {
 }
 
 static void GUITrayUpdate() {
+	/* todo: Add code to change the tray icon to grey depending on SimStatus */
+	
 	if(GetRTVal(FST_AUTOMODE))
 		sprintf(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Automatic\nInterval: %u seconds",10);
 	else
 		strcpy(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Manual");
+	
+	if(Stats.SimStatus)
+		TrayIconData.hIcon = hIcon;
+	else
+		TrayIconData.hIcon = hIconGray;
 		
 	/* Only modify the tray icon if it exists. */
 	if(TrayIconState == 1) {
