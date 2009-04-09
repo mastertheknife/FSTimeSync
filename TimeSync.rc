@@ -46,15 +46,15 @@ EXSTYLE WS_EX_APPWINDOW
 CAPTION "FS Time Sync"
 FONT 8, "Ms Shell Dlg 2", 0, 0, 1
 {
-    LTEXT           "", IDT_TOSYNC, 5, 109, 187, 25, SS_LEFT
-    LTEXT           "%NextSync%", IDT_NEXTSYNC, 5, 109, 187, 8, SS_LEFT
+    LTEXT           "", IDT_TOSYNC, 5, 98, 187, 20, SS_LEFT
+    LTEXT           "%NextSync%", IDT_NEXTSYNC, 5, 98, 187, 8, SS_LEFT
     LTEXT           "FS Time Sync v1.0 by mastertheknife", IDC_STATIC, 5, 137, 120, 8, SS_LEFT
     LTEXT           "Flight Simulator Status:", IDC_STATIC, 5, 6, 74, 8, SS_LEFT
     LTEXT           "Not Running", IDT_SIMSTATUS, 81, 6, 111, 8, SS_RIGHT
     LTEXT           "Operating Mode:", IDC_STATIC, 5, 58, 54, 8, SS_LEFT
     LTEXT           "%ModeText%", IDT_OPERMODE, 61, 58, 131, 8, SS_RIGHT
     LTEXT           "Manual synchronization is not possible in automatic mode.", IDT_NOMANUAL, 5, 67, 187, 8, SS_LEFT
-    LTEXT           "", IDT_LASTSYNC, 5, 98, 187, 8, SS_LEFT
+    LTEXT           "", IDT_LASTSYNC, 5, 122, 187, 8, SS_LEFT
     LTEXT           "Flight Simulator UTC Time:", IDC_STATIC, 5, 19, 83, 8, SS_LEFT
     LTEXT           "N/A", IDT_SIMUTC, 91, 19, 101, 8, SS_RIGHT
     LTEXT           "System UTC Time:", IDC_STATIC, 5, 32, 58, 8, SS_LEFT
@@ -65,7 +65,7 @@ FONT 8, "Ms Shell Dlg 2", 0, 0, 1
     PUSHBUTTON      "Sync Now", IDB_SYNCNOW, 38, 80, 96, 14, BS_PUSHBUTTON
     PUSHBUTTON      "%ModeBTN%", IDB_MODE, 136, 80, 58, 14, BS_PUSHBUTTON
     DEFPUSHBUTTON   "OK", IDB_OK, 144, 134, 50, 14, BS_DEFPUSHBUTTON
-    CONTROL         "", IDP_NEXTSYNC, PROGRESS_CLASS, 0, 4, 120, 189, 10
+    CONTROL         "", IDP_NEXTSYNC, PROGRESS_CLASS, 0, 4, 109, 189, 10
 }
 
 
