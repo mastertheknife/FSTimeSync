@@ -40,32 +40,32 @@ IDM_TRAYMENU MENU
 // Dialog resources
 //
 LANGUAGE LANG_ENGLISH, SUBLANG_NEUTRAL
-IDD_MAIN DIALOGEX 0, 0, 198, 155
+IDD_MAIN DIALOGEX 0, 0, 198, 152
 STYLE DS_3DLOOK | DS_CENTER | DS_MODALFRAME | DS_SETFONT | WS_BORDER | WS_CAPTION | WS_DLGFRAME | WS_GROUP | WS_POPUP | WS_SYSMENU
 EXSTYLE WS_EX_APPWINDOW
 CAPTION "FS Time Sync"
 FONT 8, "Ms Shell Dlg 2", 0, 0, 1
 {
-    LTEXT           "", IDT_TOSYNC, 5, 109, 190, 25, SS_LEFT
-    LTEXT           "%NextSync%", IDT_NEXTSYNC, 5, 109, 190, 8, SS_LEFT
-    LTEXT           "FS Time Sync v1.0 by mastertheknife", IDC_STATIC, 5, 140, 120, 8, SS_LEFT
+    LTEXT           "", IDT_TOSYNC, 5, 109, 187, 25, SS_LEFT
+    LTEXT           "%NextSync%", IDT_NEXTSYNC, 5, 109, 187, 8, SS_LEFT
+    LTEXT           "FS Time Sync v1.0 by mastertheknife", IDC_STATIC, 5, 137, 120, 8, SS_LEFT
     LTEXT           "Flight Simulator Status:", IDC_STATIC, 5, 6, 74, 8, SS_LEFT
-    LTEXT           "Not Running", IDT_SIMSTATUS, 81, 6, 110, 8, SS_RIGHT
+    LTEXT           "Not Running", IDT_SIMSTATUS, 81, 6, 111, 8, SS_RIGHT
     LTEXT           "Operating Mode:", IDC_STATIC, 5, 58, 54, 8, SS_LEFT
-    LTEXT           "%ModeText%", IDT_OPERMODE, 61, 58, 130, 8, SS_RIGHT
-    LTEXT           "Manual synchronization is not possible in automatic mode.", IDT_NOMANUAL, 5, 67, 186, 8, SS_LEFT
-    LTEXT           "", IDT_LASTSYNC, 5, 98, 186, 8, SS_LEFT
+    LTEXT           "%ModeText%", IDT_OPERMODE, 61, 58, 131, 8, SS_RIGHT
+    LTEXT           "Manual synchronization is not possible in automatic mode.", IDT_NOMANUAL, 5, 67, 187, 8, SS_LEFT
+    LTEXT           "", IDT_LASTSYNC, 5, 98, 187, 8, SS_LEFT
     LTEXT           "Flight Simulator UTC Time:", IDC_STATIC, 5, 19, 83, 8, SS_LEFT
-    LTEXT           "N/A", IDT_SIMUTC, 91, 19, 100, 8, SS_RIGHT
+    LTEXT           "N/A", IDT_SIMUTC, 91, 19, 101, 8, SS_RIGHT
     LTEXT           "System UTC Time:", IDC_STATIC, 5, 32, 58, 8, SS_LEFT
-    LTEXT           "%SysUTCTime%", IDT_SYSUTC, 65, 32, 126, 8, SS_RIGHT
+    LTEXT           "%SysUTCTime%", IDT_SYSUTC, 65, 32, 127, 8, SS_RIGHT
     LTEXT           "Synchronization Status:", IDC_STATIC, 5, 45, 79, 8, SS_LEFT
-    LTEXT			"100%", IDT_SYNCSTATUS, 82, 45, 109, 8, SS_RIGHT
+    LTEXT			"100%", IDT_SYNCSTATUS, 82, 45, 110, 8, SS_RIGHT
     PUSHBUTTON      "Options", IDB_OPTIONS, 4, 80, 32, 14, BS_PUSHBUTTON
     PUSHBUTTON      "Sync Now", IDB_SYNCNOW, 38, 80, 96, 14, BS_PUSHBUTTON
     PUSHBUTTON      "%ModeBTN%", IDB_MODE, 136, 80, 58, 14, BS_PUSHBUTTON
-    DEFPUSHBUTTON   "OK", IDB_OK, 144, 137, 50, 14, BS_DEFPUSHBUTTON
-    CONTROL         "", IDP_NEXTSYNC, PROGRESS_CLASS, PBS_SMOOTH, 5, 120, 188, 13
+    DEFPUSHBUTTON   "OK", IDB_OK, 144, 134, 50, 14, BS_DEFPUSHBUTTON
+    CONTROL         "", IDP_NEXTSYNC, PROGRESS_CLASS, 0, 4, 120, 189, 10
 }
 
 

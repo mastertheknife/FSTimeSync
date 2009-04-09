@@ -141,15 +141,11 @@ static BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 				/* Set the hMainDlg handle for the next call */
 				hMainDlg = hwnd;
 												
-				/* Draw the dialog operating mode (Auto or manual) */
+				/* Draw the dialog elements */
 				GUIUpdate();
 
-				/* Draw the other elements */
-				GUIElementsUpdate();
-
-				SendDlgItemMessage(hwnd,IDP_SYNCSTATUS, PBM_SETRANGE, 0, (LPARAM)MAKELPARAM(0, 100)); 
-				SendDlgItemMessage(hwnd,IDP_SYNCSTATUS, PBM_SETPOS, (WPARAM)100, 0); 
-			
+				/* Update the dialog elements */
+				GUIElementsUpdate();			
 			}
 			break;
 		case WM_TIMER:
@@ -298,11 +294,11 @@ static DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 	wcex.style          = 0;
 	wcex.lpfnWndProc    = TraynHotkeysProc;
 	wcex.hInstance      = hInst;
-	wcex.lpszClassName  = "DUMMYWINDOWFORTRAYNOTIFICATIONS";
+	wcex.lpszClassName  = "DUMMYWINDOWFORMESSAGES";
 	RegisterClassEx(&wcex);
 	
 	/* Create dummy window for tray icon message processing */
-	if(!(hDummyWindow = CreateWindowEx(0,"DUMMYWINDOWFORTRAYNOTIFICATIONS",NULL,0,0,0,0,0,HWND_MESSAGE,0,hInst,NULL))) {
+	if(!(hDummyWindow = CreateWindowEx(0,"DUMMYWINDOWFORMESSAGES",NULL,0,0,0,0,0,HWND_MESSAGE,0,hInst,NULL))) {
 		debuglog(DEBUG_ERROR,"Creating dummy window failed\n");
 	}
 	
@@ -401,9 +397,9 @@ int GUIShutdown(void) {
 	DestroyIcon(hIcon);
 	DestroyIcon(hIconGray);
 
-	/* Close the handles to the menus */
-	CloseHandle(SubTrayMenu);
-	CloseHandle(TrayMenu);
+	/* Unload the menus */
+	DestroyMenu(SubTrayMenu);
+	DestroyMenu(TrayMenu);
 
 	return 1;
 }
@@ -462,8 +458,11 @@ static void GUIElementsUpdate() {
 	}
 	
 	if(GetRTVal(FST_AUTOMODE)) {
-		if(Stats.SimStatus) {			
-			dwInt = Stats.SyncNext - time(NULL);
+		if(Stats.SimStatus) {		
+			if(Stats.SyncNext <= time(NULL))	
+				dwInt = Settings.AutoSyncInterval;
+			else
+				dwInt = Stats.SyncNext - time(NULL);
 			sprintf(StrBuff,"Next synchronization in %u seconds.",dwInt);
 			SetDlgItemText(hMainDlg,IDT_NEXTSYNC,StrBuff);
 			dwInt = Stats.SyncInterval - dwInt;

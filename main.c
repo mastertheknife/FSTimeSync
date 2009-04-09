@@ -34,7 +34,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 	RegistryReadSettings(&Settings);
 	/* Set the operating mode (manual or auto) based on the setting */
  	SetRTVal(FST_AUTOMODE,Settings.AutoOnStart);
-	Stats.SyncNext = time(NULL);
+	Stats.SyncNext = time(NULL)+Settings.AutoSyncInterval;
 	
 	/* Start the GUI Thread, based on the Start Minimized setting */
 	if(Settings.StartMinimized == 1)
