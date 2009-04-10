@@ -21,7 +21,8 @@
 #define IDC_UTCOFFSET                           1011
 #define IDE_UTCOFFSET                           1012
 #define IDH_MANSYNCHOTKEY                       1014
-#define IDB_OK                                  1050
+#define IDB_OK	                                1040
+#define IDB_CLOSE								1050
 #define IDB_CANCEL                              1051
 #define IDT_NEXTSYNC                            1053
 #define IDP_NEXTSYNC                            1055

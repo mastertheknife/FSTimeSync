@@ -20,7 +20,7 @@ static void GUIUpdate();
 static void GUIElementsUpdate();
 static void GUIOptionsDraw(HWND hwnd,SyncOptions_t* Sets);
 static void GUIOptionsSave(HWND hwnd,SyncOptions_t* Sets);
-static void GUISetDialogIcon(HWND hwnd);
+static void GUISetDialogIcon(HWND hwnd, DWORD Color);
 static void GUITrayUpdate();
 static void GUIOpenMain(); 
 static void GUISyncNowEvent();

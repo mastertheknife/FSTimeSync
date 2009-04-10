@@ -27,7 +27,8 @@ typedef struct tagSyncStats {
 	time_t SyncLast;
 	DWORD SyncLastModified;
 	time_t SimUTCTime;
-	time_t SysLocalTime;
+	time_t SysUTCTime;
+	DWORD UpdateElements;
 } SyncStats_t;
 
 typedef struct tagRV {

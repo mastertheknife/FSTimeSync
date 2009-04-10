@@ -7,6 +7,7 @@
 #include "main.h"
 #include "sync.h"
 #include <commctrl.h>
+#include "FSUIPC_User.h"
 
 HWND hDummyWindow = NULL;
 static HWND hMainDlg = NULL;
@@ -133,7 +134,7 @@ static BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 		case WM_INITDIALOG:
 			{
 				/* Set the icon for this dialog */
-				GUISetDialogIcon(hwnd);
+				GUISetDialogIcon(hwnd,Stats.SimStatus);
 				
 				/* Create the draw timer */
 				hDrawTimer = SetTimer(hwnd,4231,200,NULL);
@@ -154,7 +155,7 @@ static BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 			break;	
 		case WM_COMMAND:
 			switch(LOWORD(wParam)) {
-				case IDB_OK:
+				case IDB_CLOSE:
 					/* Close the window, back to tray */
 					DestroyWindow(hwnd);
 					break;
@@ -218,7 +219,7 @@ static BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPAR
 				ShowWindow(hOpt3,SW_HIDE);				
 				
 				/* Set the icon for this dialog */
-				GUISetDialogIcon(hwnd);
+				GUISetDialogIcon(hwnd,1);
 				
 				/* Copy the settings from main to here */
 				EnterCriticalSection(&ProgramDataCS);
@@ -433,28 +434,45 @@ int GUIStopThread() {
 	
 static void GUIElementsUpdate() {
 	const char* lpstr;
-	struct tm* lptm;
-	time_t ntime;
 	char StrBuff[128];
 	DWORD dwInt;
+	int TimePercent;
 
 	EnterCriticalSection(&ProgramDataCS);
 
-	/* System UTC Time */
-	lptm = gmtime(&Stats.SysLocalTime);
-	lpstr = asctime(lptm);
-	SetDlgItemText(hMainDlg,IDT_SYSUTC,lpstr);		
+	/* Only update the elements if the main loop finished another cycle */
+	if(Stats.UpdateElements) {
+		/* System UTC Time */
+		lpstr = ctime(&Stats.SysUTCTime);
+		SetDlgItemText(hMainDlg,IDT_SYSUTC,lpstr);		
 
-	/* FS UTC Time - only if connected to FS */
-	if(Stats.SimStatus) {
-		lpstr = ctime(&Stats.SimUTCTime);	
-		SetDlgItemText(hMainDlg,IDT_SIMUTC,lpstr);
-	}
+		/* FS UTC Time - only if connected to FS */
+		if(Stats.SimStatus) {
+			lpstr = ctime(&Stats.SimUTCTime);	
+			SetDlgItemText(hMainDlg,IDT_SIMUTC,lpstr);
+		}
 	
-	if(Stats.SyncLastModified) {
-		sprintf(StrBuff,"Last synchronizated in %s",ctime(&Stats.SyncLast));
-		SetDlgItemText(hMainDlg,IDT_LASTSYNC,StrBuff);
+		if(Stats.SyncLastModified) {
+			sprintf(StrBuff,"Last synchronizated in %s",ctime(&Stats.SyncLast));
+			SetDlgItemText(hMainDlg,IDT_LASTSYNC,StrBuff);
 			Stats.SyncLastModified = 0;
+		}
+	
+		/* Sync status */
+		if(Stats.SimStatus) {
+			if(Stats.SimUTCTime > Stats.SysUTCTime)
+				TimePercent = Stats.SimUTCTime - Stats.SysUTCTime;
+			else
+				TimePercent = Stats.SysUTCTime - Stats.SimUTCTime;
+			TimePercent = 600 - TimePercent;
+			if(TimePercent > 600)
+				TimePercent = 600;
+			if(TimePercent < 0)
+				TimePercent = 0;
+			dwInt = ((((double)TimePercent) / ((double)600))* 100)+0.5;				
+			sprintf(StrBuff,"%u%%",dwInt);
+			SetDlgItemText(hMainDlg,IDT_SYNCSTATUS,StrBuff);
+		}
 	}
 	
 	if(GetRTVal(FST_AUTOMODE)) {
@@ -470,10 +488,9 @@ static void GUIElementsUpdate() {
 			SendDlgItemMessage(hMainDlg,IDP_NEXTSYNC, PBM_SETPOS, (WPARAM)dwInt, 0); 
 		}
 	}
+	Stats.UpdateElements = 0; /* No need to re-update the elements if nothing has changed */
 	
 	LeaveCriticalSection(&ProgramDataCS);
-	
-	debuglog(DEBUG_CAPTURE,"Timer event!\n");
 }	
 
 static void GUIUpdate() {	
@@ -488,20 +505,44 @@ static void GUIUpdate() {
 	if(hMainDlg) {	
 		
 		EnterCriticalSection(&ProgramDataCS);
+		
+		/* Things that are related to simstatus but not mode related are here */
+		if(Stats.SimStatus) {
+			switch(FSUIPC_FS_Version) {
+				case SIM_FS98:
+					SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"FS98 Running");
+					break;
+				case SIM_FS2K:
+					SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"FS2000 Running");
+					break;
+				case SIM_FS2K2:
+					SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"FS2002 Running");
+					break;
+				case SIM_FS2K4:
+					SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"FS2004 Running");
+					break;
+				case SIM_FSX:
+					SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"FS X Running");
+					break;
+				default:					
+					SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"Running");
+					break;
+			}					
+		} else {
+			SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"Not Running"); 				
+			SetDlgItemText(hMainDlg,IDT_SIMUTC,"N/A");			
+			SetDlgItemText(hMainDlg,IDT_SYNCSTATUS,"N/A");
+			SetDlgItemText(hMainDlg,IDT_TOSYNC,"No simulator detected running. Please start your Microsoft Flight Simulator 98\\2000\\2002\\2004\\FS X.\n");
+		}		
 	
 		if(GetRTVal(FST_AUTOMODE)) {	
 			if(Stats.SimStatus) {
 				ShowWindow(hToSync,SW_HIDE);
 				ShowWindow(hNextSync,SW_SHOW);
-				ShowWindow(hPNextSync,SW_SHOW);
-				SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"Running");			
+				ShowWindow(hPNextSync,SW_SHOW);		
 			} else {
-				SetDlgItemText(hMainDlg,IDT_SIMUTC,"N/A");			
-				SetDlgItemText(hMainDlg,IDT_SYNCSTATUS,"N/A");
-				SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"Not Running");
 				ShowWindow(hPNextSync,SW_HIDE);
-				ShowWindow(hNextSync,SW_HIDE);
-				SetDlgItemText(hMainDlg,IDT_TOSYNC,"No simulator detected running. Please start your Microsoft Flight Simulator.\n");				
+				ShowWindow(hNextSync,SW_HIDE);				
 				ShowWindow(hToSync,SW_SHOW);
 			}	
 			EnableWindow(hBSync,FALSE);							
@@ -511,14 +552,9 @@ static void GUIUpdate() {
 		} else {
 			if(Stats.SimStatus) {
 				EnableWindow(hBSync,TRUE);
-				SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"Running");
 				SetDlgItemText(hMainDlg,IDT_TOSYNC,"To synchronizate the flight simulator clock, click on the\nSync Now button or the assigned hotkey (see options).");
 			} else {
-				SetDlgItemText(hMainDlg,IDT_SIMUTC,"N/A");			
-				SetDlgItemText(hMainDlg,IDT_SYNCSTATUS,"N/A");
-				SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"Not Running");
 				EnableWindow(hBSync,FALSE);
-				SetDlgItemText(hMainDlg,IDT_TOSYNC,"No simulator detected running. Please start your Microsoft Flight Simulator.\n");	
 			}
 			ShowWindow(hPNextSync,SW_HIDE);		
 			ShowWindow(hNextSync,SW_HIDE);		
@@ -527,6 +563,9 @@ static void GUIUpdate() {
 			SetDlgItemText(hMainDlg,IDB_MODE,"Automatic Mode");	
 			SetDlgItemText(hMainDlg,IDT_OPERMODE,"Manual");
 		}
+				
+		/* Update the main window's icon */
+		GUISetDialogIcon(hMainDlg,Stats.SimStatus);
 
 		LeaveCriticalSection(&ProgramDataCS);
 	} 
@@ -536,7 +575,7 @@ static void GUIUpdate() {
 	
 	/* Update the tray icon to the new mode */
 	GUITrayUpdate();
-	
+			
 	CloseHandle(hBSync);
 	CloseHandle(hTNoManual);
 	CloseHandle(hPNextSync);	
@@ -665,7 +704,7 @@ static void GUITrayUpdate() {
 	/* todo: Add code to change the tray icon to grey depending on SimStatus */
 	
 	if(GetRTVal(FST_AUTOMODE))
-		sprintf(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Automatic\nInterval: %u seconds",10);
+		sprintf(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Automatic\nInterval: %u seconds",Settings.AutoSyncInterval);
 	else
 		strcpy(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Manual");
 	
@@ -697,9 +736,14 @@ static void GUIOpenMain() {
 	}
 }
 
-static void GUISetDialogIcon(HWND hwnd) {
-	SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
-	SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+static void GUISetDialogIcon(HWND hwnd, DWORD Color) {
+	if(Color) {
+		SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+		SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+	} else {
+		SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIconGray);
+		SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIconGray);	
+	}	
 }
 
 static void GUISyncNowEvent() {

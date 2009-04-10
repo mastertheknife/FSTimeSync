@@ -9,8 +9,8 @@
 #include <commctrl.h>
 
 /* Globals */
-SyncOptions_t Settings = {0,0,0,0,0,0,MAKEWORD(VK_F6,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(VK_F7,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* The options! */
-SyncOptions_t Defaults = {0,0,0,1,1,10}; /* Default options */
+SyncOptions_t Settings;
+SyncOptions_t Defaults = {0,0,0,1,10,0,0,0,MAKEWORD(0x53,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(0x4D,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* Default options */
 SyncStats_t Stats;
 CRITICAL_SECTION ProgramDataCS;
 static RuntimeVals_t RuntimeVals;
@@ -46,6 +46,8 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 	/* Main program loop */
 	while(!GetRTVal(FST_QUIT)) {
 		time_t CurrentTime;
+		struct tm* systm;
+		int nResult;
 		
 		EnterCriticalSection(&ProgramDataCS);
 		
@@ -53,9 +55,16 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		Stats.SimStatus = SyncGetConStatus(); /* Get updated state of the connection */
 			
 		/* System UTC time */
-		Stats.SysLocalTime = CurrentTime;
+		systm = gmtime(&CurrentTime);
+		systm->tm_yday = 0;
+		systm->tm_wday = 0; 
+		systm->tm_isdst = 0;
+		if((Stats.SysUTCTime = mktime(systm)) == (time_t)-1) {
+			debuglog(DEBUG_ERROR,"mktime failed making system UTC time!\n");
+			Stats.SysUTCTime = CurrentTime; /* If we can't get UTC, then lets have local */
+		}
 		if(Settings.SystemUTCOffsetState)
-			Stats.SysLocalTime += Settings.SystemUTCOffset*60;
+			Stats.SysUTCTime += Settings.SystemUTCOffset*60;
 
 		/* Only proceed if sim is connected */
 		if(Stats.SimStatus) {
@@ -76,20 +85,24 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 					Stats.SyncInterval = Settings.AutoSyncInterval; /* Progress bar is drawn based on current synch, not next one */
 				}	
 				if(Stats.SyncNext <= CurrentTime) {
-					/* Sync code here */
-					Stats.SyncLast = time(&CurrentTime); /* Sync takes time, update the time on the way */
-					Stats.SyncNext = CurrentTime+Settings.AutoSyncInterval;
-					Stats.SyncInterval = Settings.AutoSyncInterval;
-					Stats.SyncLastModified = 1;
+					if(nResult = SyncGo(&Stats.SysUTCTime)) {
+						Stats.SyncLast = time(&CurrentTime); /* Sync takes time, update the time on the way */
+						Stats.SyncInterval = Settings.AutoSyncInterval;
+						Stats.SyncLastModified = 1;
+					} else {
+						Stats.SyncNext = CurrentTime+5;
+						Stats.SyncInterval = 5;
+					}
 				}
 			} else {
 				/* Manual mode */
 				Stats.SyncInterval = 0;
 				if(GetRTVal(FST_SYNCNOW)) {
-					/* Sync code goes here */
-					SetRTVal(FST_SYNCNOW, 0); /* Clear the event */
-					Stats.SyncLast = time(&CurrentTime);
-					Stats.SyncLastModified = 1;
+					if(nResult = SyncGo(&Stats.SysUTCTime)) {
+						SetRTVal(FST_SYNCNOW, 0); /* Clear the event */
+						Stats.SyncLast = time(&CurrentTime);
+						Stats.SyncLastModified = 1;
+					}
 				}
 			} /* Mode */
 		} else {
@@ -99,6 +112,8 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 			PostMessage(hDummyWindow,WM_USER+1,10,0);
 
 		} /* SimStatus */
+			
+		Stats.UpdateElements = 1;
 			
 		LeaveCriticalSection(&ProgramDataCS);		
 		Sleep(SLEEP_DURATION);
@@ -205,6 +220,6 @@ int HotkeysUnregister(HWND hwnd) {
 		debuglog(DEBUG_ERROR,"Failed unregistering mode switch hotkey\n");	
 	
 	return 1;
-}	
+}
 
 
