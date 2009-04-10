@@ -29,6 +29,10 @@ int RegistryReadSettings(SyncOptions_t* ReadSettings) {
 		/* ReadSettings->FutureSetting = Defaults.FutureSetting; */
 		ReadSettings->AutoOnStart = Defaults.AutoOnStart;	
 		ReadSettings->AutoSyncInterval = Defaults.AutoSyncInterval;
+		ReadSettings->DisableAffinityFix = Defaults.DisableAffinityFix;
+		ReadSettings->DisablePriorityFix = Defaults.DisablePriorityFix;
+		ReadSettings->ManSyncHotkey = Defaults.ManSyncHotkey;
+		ReadSettings->ModeSwitchHotkey = Defaults.ModeSwitchHotkey;
 		return 0;
 	}				
 	
@@ -75,6 +79,14 @@ int RegistryReadSettings(SyncOptions_t* ReadSettings) {
 			
 		ReadSettings->AutoSyncInterval = Defaults.AutoSyncInterval;
 	}
+	
+	if((nRegResult = RegQueryValueEx(hRegKey,"DisableAffinityFix",0,NULL,(LPVOID)&(ReadSettings->DisableAffinityFix),&dwSize)) != ERROR_SUCCESS) {
+		ReadSettings->DisableAffinityFix = Defaults.DisableAffinityFix;
+	}
+	
+	if((nRegResult = RegQueryValueEx(hRegKey,"DisablePriorityFix",0,NULL,(LPVOID)&(ReadSettings->DisablePriorityFix),&dwSize)) != ERROR_SUCCESS) {
+		ReadSettings->DisablePriorityFix = Defaults.DisablePriorityFix;
+	}		
 	
 	if((nRegResult = RegQueryValueEx(hRegKey,"ManSyncHotkey",0,NULL,(LPVOID)&dwTemp,&dwSize)) != ERROR_SUCCESS) {
 		if(nRegResult != ERROR_FILE_NOT_FOUND)

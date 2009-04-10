@@ -10,10 +10,12 @@
 typedef struct tagSyncOptions {
 	DWORD StartMinimized;	
 	DWORD SystemUTCOffsetState;
-	LONG SystemUTCOffset;
 	DWORD FutureSetting00;
 	DWORD AutoOnStart;	
 	DWORD AutoSyncInterval;
+	DWORD DisableAffinityFix;
+	DWORD DisablePriorityFix;
+	LONG SystemUTCOffset;	
 	WORD ManSyncHotkey;
 	WORD ModeSwitchHotkey;
 } SyncOptions_t;

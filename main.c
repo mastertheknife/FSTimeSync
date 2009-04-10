@@ -46,33 +46,23 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 	/* Main program loop */
 	while(!GetRTVal(FST_QUIT)) {
 		time_t CurrentTime;
+		
 		EnterCriticalSection(&ProgramDataCS);
+		
 		CurrentTime = time(NULL); /* Saves multiple expensive calls to time() */
-		
-		/* Code for testing purposes */
-		SHORT KeyState1,KeyState2;	
-		KeyState1 = GetAsyncKeyState(VK_SHIFT | VK_F2);
-		if(KeyState1 & 0x8000) {
-			Stats.SimStatus = 1;
-			PostMessage(hDummyWindow,WM_USER+1,10,0);
-		}
-		
-		KeyState2 = GetAsyncKeyState(VK_SHIFT | VK_F3);
-		if(KeyState2 & 0x8000) {
-			Stats.SimStatus = 0;
-			PostMessage(hDummyWindow,WM_USER+1,10,0);
-		}	
+		Stats.SimStatus = SyncGetConStatus(); /* Get updated state of the connection */
 			
 		/* System UTC time */
 		Stats.SysLocalTime = CurrentTime;
 		if(Settings.SystemUTCOffsetState)
 			Stats.SysLocalTime += Settings.SystemUTCOffset*60;
 
-		/* FS UTC time, temporary assigned system local time */
-		Stats.SimUTCTime = CurrentTime;	
-
 		/* Only proceed if sim is connected */
-		if(Stats.SimStatus) {	
+		if(Stats.SimStatus) {
+		
+			/* Get the simulator's UTC time */
+			SyncGetTime(&Stats.SimUTCTime);				
+					
 			if(GetRTVal(FST_AUTOMODE)) {
 				/* Automatic mode */		
 				/* Check if switched to faster synch interval and there's too long to wait */
@@ -96,21 +86,30 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 				/* Manual mode */
 				Stats.SyncInterval = 0;
 				if(GetRTVal(FST_SYNCNOW)) {
-					/* Sync code here */
+					/* Sync code goes here */
 					SetRTVal(FST_SYNCNOW, 0); /* Clear the event */
 					Stats.SyncLast = time(&CurrentTime);
 					Stats.SyncLastModified = 1;
 				}
-			}
-		}
+			} /* Mode */
+		} else {
+			/* Connect to the sim */
+			Stats.SimStatus = SyncConnect();		
+			/* Signal GUI thread to call GUIUpdate - needed for tray icon */				
+			PostMessage(hDummyWindow,WM_USER+1,10,0);
 
+		} /* SimStatus */
+			
 		LeaveCriticalSection(&ProgramDataCS);		
 		Sleep(SLEEP_DURATION);
-	}
-	
-	
+	} /* Loop end */ 
+
 	/* Stop the GUI thread, or at least wait for it to close */
 	GUIStopThread();
+	
+	/* Disconnect from the simulator if it's still connected */
+	if(SyncGetConStatus())
+		SyncDisconnect();
 	
 	/* Write settings to the registry */
 	RegistryWriteSettings(&Settings);

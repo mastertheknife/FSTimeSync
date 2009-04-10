@@ -4,6 +4,7 @@
 #include "debug.h"
 #include "main.h"
 
+/* Internal time and date structures */
 typedef struct tagFSTime_t {
    BYTE LocalHour; // 0x238
    BYTE LocalMinute; // 0x239
@@ -20,6 +21,8 @@ typedef struct tagFSDate_t {
 
 int SyncConnect();
 int SyncDisconnect();
-int SyncConStatus();
-
+int SyncGetConStatus();
+int SyncGo(time_t* UTCtime);
+int SyncGetTime(time_t* UTCtime);
+static int SyncGetSimUTCLocalDifference(int* ZoneDifference);
 #endif
