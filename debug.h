@@ -22,6 +22,7 @@ extern "C" {
 
 /* __func__ is a C99 feature */
 /* and VA ARGS doesnt work with every compiler. */
+/* Thread safe - doesn't care about the lock */	
 #define debuglog(level, format, ...) DebugWrite(__FILE__, __func__ , GetCurrentThreadId(), level, format, ## __VA_ARGS__)
 
 int DebugStartup(void); 			/* Initalizes the debug module.		*/

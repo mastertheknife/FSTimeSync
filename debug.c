@@ -7,6 +7,7 @@ static unsigned long debugfilter = DEBUG_ALL;	/* Debug mask for filtering messag
 static char* debugstrings[] = {"DEBUG_TRACE","DEBUG_CAPTURE","DEBUG_INFO","DEBUG_NOTICE","DEBUG_WARNING","DEBUG_ERROR","DEBUG_CRITICAL","DEBUG_SHOWALWAYS","DEBUG_MIXED","DEBUG_UNKNOWN"};
 static CRITICAL_SECTION debuglogCS;
 
+/* Thread safe - doesn't care about the lock */
 const char* DebugGetMaskString(unsigned long nmask) {
 	switch(nmask) {
 		case 0x4UL:
@@ -29,7 +30,8 @@ const char* DebugGetMaskString(unsigned long nmask) {
 			return debugstrings[8];
 		}
 }										
-									
+
+/* Thread safe - doesn't care about the lock */						
 int DebugStartup(void) {
 #ifndef _DEBUG
 	/* Empty body */
@@ -41,6 +43,7 @@ int DebugStartup(void) {
 #endif	
 }		
 
+/* Thread safe - doesn't care about the lock */	
 int DebugShutdown(void) {
 #ifndef _DEBUG
 	/* Empty body */
@@ -51,15 +54,18 @@ int DebugShutdown(void) {
 #endif	
 }		
 
+/* Thread safe - doesn't care about the lock */	
 unsigned long DebugGetMask(void) {
 	return debugfilter;
 }
 
+/* Thread safe - doesn't care about the lock */	
 void DebugSetMask(unsigned long newmask) {
 	debuglog(DEBUG_ALL,"Debug mask being changed to: %s (%u) from %s (%u).\n",DebugGetMaskString(newmask),newmask,DebugGetMaskString(debugfilter),debugfilter); 	
 	InterlockedExchange(&debugfilter,newmask);
 }
 
+/* Thread safe - doesn't care about the lock */	
 void DebugWrite(const char* strfile, const char* strfunc, unsigned int nTID, unsigned long nmask, const char* format, ...) {
 #ifndef _DEBUG
 	/* Empty body, so a good compiler will optimise calls. */

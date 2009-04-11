@@ -36,7 +36,8 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 
 	/* Load the settings from the registry */
 	RegistryReadSettings(&Settings);
-	/* Set the operating mode (manual or auto) based on the setting */
+	
+	/* Set the operating mode (manual or auto) based on the setting and next sync */
  	SetRTVal(FST_AUTOMODE,Settings.AutoOnStart);
 	Stats.SyncNext = time(NULL)+Settings.AutoSyncInterval;
 	
@@ -147,6 +148,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
     return 0;
 }
 
+/* Thread safe */
 DWORD GetRTVal(int RTVal) {
 	DWORD dwRet;
 	EnterCriticalSection(&ProgramControlCS);	
@@ -168,7 +170,8 @@ DWORD GetRTVal(int RTVal) {
 	LeaveCriticalSection(&ProgramControlCS);
 	return dwRet;
 }	
-	
+
+/* Thread safe */
 void SetRTVal(int RTVal, int NewValue) {
 	EnterCriticalSection(&ProgramControlCS);	
 	
@@ -186,7 +189,8 @@ void SetRTVal(int RTVal, int NewValue) {
 	
 	LeaveCriticalSection(&ProgramControlCS);
 }
-				
+
+/* Thread safe - doesn't care about the lock */					
 int HotkeysRegister(HWND hwnd, WORD ManSync, WORD OperModeSwitch) {
 	UINT ManSyncModifiers = 0;
 	UINT OperModeSwitchModifiers = 0;
@@ -220,6 +224,7 @@ int HotkeysRegister(HWND hwnd, WORD ManSync, WORD OperModeSwitch) {
 	return 1;
 }
 
+/* Thread safe - doesn't care about the lock */	
 int HotkeysUnregister(HWND hwnd) {
 	if(!(UnregisterHotKey(hwnd, 443)))
 		debuglog(DEBUG_ERROR,"Failed unregistering manual sync hotkey\n");
@@ -230,6 +235,7 @@ int HotkeysUnregister(HWND hwnd) {
 	return 1;
 }
 
+/* Thread safe - doesn't care about the lock */	
 static int AffinityPriorityFix(DWORD DisableAffinityFix, DWORD DisablePriorityFix) {
 	HWND hFShwnd;
 	DWORD nPriority;

@@ -21,13 +21,17 @@ static unsigned int TrayIconState;
 static HMENU TrayMenu;
 static HMENU SubTrayMenu;
 
+/* Thread safe */
 static LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM lParam) {
 	HWND hTemphwnd;
     switch(Message)
     {
 		case MAINSIGNALMSG:
-			if(wParam == 10) 
-				GUIUpdate();
+			if(wParam == 10)
+				/* Lock for the settings and stats */
+				EnterCriticalSection(&ProgramDataCS);					
+				GUIUpdate(&Settings,&Stats);
+				LeaveCriticalSection(&ProgramDataCS);	
 			break;	
 		case TRAYICONMSG:
 			switch(lParam) {
@@ -42,10 +46,13 @@ static LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, 
 							EnableMenuItem(SubTrayMenu,2,MF_BYPOSITION | MF_GRAYED);
 							CheckMenuRadioItem(SubTrayMenu,3,4,3,MF_BYPOSITION);
 						} else { 
+							/* Lock for the Stats */
+							EnterCriticalSection(&ProgramDataCS);
 							if(Stats.SimStatus) 
 								EnableMenuItem(SubTrayMenu,2,MF_BYPOSITION | MF_ENABLED);
 							else					
 								EnableMenuItem(SubTrayMenu,2,MF_BYPOSITION | MF_GRAYED);
+							LeaveCriticalSection(&ProgramDataCS);	
 							CheckMenuRadioItem(SubTrayMenu,3,4,4,MF_BYPOSITION);
 						}
 						
@@ -74,16 +81,20 @@ static LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, 
 					GUISyncNowEvent();
 					break;
 				case 444: 
+					/* Lock for the settings and stats */		
+					EnterCriticalSection(&ProgramDataCS);	
+									
 					/* If automatic, change to manual and vice versa. */
 					if(GetRTVal(FST_AUTOMODE)) {
-						SetRTVal(FST_AUTOMODE,FALSE);
-						/* If the dialog exists, redraw will also update the tray,
-				   		But if it doesn't, we have to update the tray ourselves */
-						GUIUpdate();
+						SetRTVal(FST_AUTOMODE,FALSE);				   		
+						GUIUpdate(&Settings,&Stats);
 					} else {
-						SetRTVal(FST_AUTOMODE,TRUE);
-						GUIUpdate();
+						SetRTVal(FST_AUTOMODE,TRUE);					
+						GUIUpdate(&Settings,&Stats);	
 					}
+					/* Finished with settings and stats */
+					LeaveCriticalSection(&ProgramDataCS);	
+					
 					break;
 				default:
 					return DefWindowProc(hwnd,Message,wParam,lParam);
@@ -108,8 +119,10 @@ static LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, 
 						break;
 
 					SetRTVal(FST_AUTOMODE,TRUE);
-					GUIUpdate();
-									
+					/* Lock for the settings and stats */
+					EnterCriticalSection(&ProgramDataCS);					
+					GUIUpdate(&Settings,&Stats);
+					LeaveCriticalSection(&ProgramDataCS);					
 					break;
 				case IDM_MANUAL:
 					/* If already in manual mode, do nothing */
@@ -117,7 +130,10 @@ static LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, 
 						break;
 
 					SetRTVal(FST_AUTOMODE,FALSE);
-					GUIUpdate();
+					/* Lock for the settings and stats */
+					EnterCriticalSection(&ProgramDataCS);
+					GUIUpdate(&Settings,&Stats);
+					LeaveCriticalSection(&ProgramDataCS);
 					break;
 				default:
 					return DefWindowProc(hwnd,Message,wParam,lParam);	
@@ -129,10 +145,14 @@ static LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, 
 	return 0;
 }
 
+/* Thread safe */
 static BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam) {
 	switch(Message) {
 		case WM_INITDIALOG:
 			{
+				/* Lock for the GUI update, elements update and dialog icon settings and stats */
+				EnterCriticalSection(&ProgramDataCS);
+				
 				/* Set the icon for this dialog */
 				GUISetDialogIcon(hwnd,Stats.SimStatus);
 
@@ -141,18 +161,24 @@ static BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 
 				/* Set the hMainDlg handle for the next call */
 				hMainDlg = hwnd;
-
+				
 				/* Draw the dialog elements */
-				GUIUpdate();
+				GUIUpdate(&Settings,&Stats);
 
 				/* Update the dialog elements */
-				GUIElementsUpdate();
+				GUIElementsUpdate(&Settings,&Stats);
+				
+				/* No need for the lock anymore */
+				LeaveCriticalSection(&ProgramDataCS);
 			}
 			break;
 		case WM_TIMER:
 			/* Updates the main window elements, such as time and sync status */
-			GUIElementsUpdate();
-			break;	
+			/* Lock for the settings and stats */
+			EnterCriticalSection(&ProgramDataCS);
+			GUIElementsUpdate(&Settings,&Stats);			
+			LeaveCriticalSection(&ProgramDataCS);			
+			break;
 		case WM_COMMAND:
 			switch(LOWORD(wParam)) {
 				case IDB_CLOSE:
@@ -166,14 +192,17 @@ static BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 					break;
 				case IDB_MODE:
 					{
+						/* Lock for the settings and stats */
+						EnterCriticalSection(&ProgramDataCS);						
 						/* Operating Mode changed. Update the runtime setting and modify the dialog depending on the new mode */
 						if(GetRTVal(FST_AUTOMODE)) {
 							SetRTVal(FST_AUTOMODE,FALSE);
-							GUIUpdate();
+							GUIUpdate(&Settings,&Stats);
 						} else {
 							SetRTVal(FST_AUTOMODE,TRUE);
-							GUIUpdate();
-						}											 	
+							GUIUpdate(&Settings,&Stats);
+						}		
+						LeaveCriticalSection(&ProgramDataCS);															 	
 					}
 					break;	
 				case IDB_SYNCNOW:
@@ -214,7 +243,7 @@ static BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 	return TRUE;
 }
 
-
+/* Thread safe */
 static BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam) {
 	switch(Message) {
 		case WM_INITDIALOG:
@@ -240,16 +269,18 @@ static BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPAR
 				case IDB_OK:
 					/* Save the options from the dialog into the structure */
 					GUIOptionsSave(hwnd,&PendingSettings);
-					
-					/* Update the hotkeys by re-registering them */
-					HotkeysUnregister(hDummyWindow);
-					HotkeysRegister(hDummyWindow,PendingSettings.ManSyncHotkey,PendingSettings.ModeSwitchHotkey);					
 
-					/* Copy them to main settings */
+					/* Unregister hotkeys */
+					HotkeysUnregister(hDummyWindow);
+
+					/* Update the hotkeys by re-registering them */
+					HotkeysRegister(hDummyWindow,PendingSettings.ManSyncHotkey,PendingSettings.ModeSwitchHotkey);					
+					
+					/* Copy settings to main settings */
 					EnterCriticalSection(&ProgramDataCS);
 					CopySettings(&Settings,&PendingSettings);
 					LeaveCriticalSection(&ProgramDataCS);
-					
+
 					/* Save to registry */
 					RegistryWriteSettings(&PendingSettings);
 
@@ -271,7 +302,6 @@ static BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPAR
 						} else {
 							EnableWindow(hEUTCCorrection,FALSE);
 						}
-						CloseHandle(hEUTCCorrection);
 					}
 					break;		
 				default:
@@ -287,6 +317,7 @@ static BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPAR
 	return TRUE;
 }
 
+/* Thread safe - doesn't care about the lock */
 static BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam) {
 	switch(Message) {
 		case WM_INITDIALOG:
@@ -317,6 +348,7 @@ static BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM
 	return TRUE;
 }
 
+/* Thread safe */
 static DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 	MSG Message;
 	HINSTANCE hInst;
@@ -359,10 +391,17 @@ static DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 	}	
 	TrayIconState = 1; /* Tray icon ready */
 
-	GUITrayUpdate(); /* Update the tray icon, mainly the tooltip */
-	
+	/* Settings and stats aren't thread safe */
+	EnterCriticalSection(&ProgramDataCS);
+
 	/* Register the hotkeys */
 	HotkeysRegister(hDummyWindow, Settings.ManSyncHotkey, Settings.ModeSwitchHotkey);
+
+	/* Update the tray icon, mainly the tooltip */	
+	GUITrayUpdate(&Settings,&Stats);
+
+	/* No need for settings and stats anymore */
+	LeaveCriticalSection(&ProgramDataCS);	
 
 	/* Creating the main window, unless start minimized is enabled */
 	if((int)lpParameter == SW_MINIMIZE) {
@@ -408,6 +447,8 @@ static DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 	return 1;	
 }
 
+
+/* Thread safe - doesn't care about the lock */	
 int GUIStartup(void) {
 	/* Initialize the common controls */
 	InitCommonControls();	
@@ -427,6 +468,7 @@ int GUIStartup(void) {
 }
 
 
+/* Thread safe - doesn't care about the lock */	
 int GUIShutdown(void) {
 
 	/* Unload the icons */
@@ -440,18 +482,22 @@ int GUIShutdown(void) {
 	return 1;
 }
 
+
+/* Thread safe - doesn't care about the lock */	
 int GUIStartThread(int nCmdShow) {
 
 	hGUIThread = CreateThread(NULL,0,GUIThreadProc,(LPVOID)nCmdShow,0,NULL);
 	if(hGUIThread) {
-		debuglog(DEBUG_INFO,"Successfully created GUI thread\n");
+		debuglog(DEBUG_INFO,"Successfully created and started GUI thread\n");
 	} else {
-		debuglog(DEBUG_ERROR,"Failed creating GUI thread\n");
+		debuglog(DEBUG_ERROR,"Failed starting GUI thread\n");
 		return 0;
 	}	
 	return 1;
 }
 
+
+/* Thread safe - doesn't care about the lock */	
 int GUIStopThread() {
 	DWORD nRet;
 	
@@ -466,39 +512,38 @@ int GUIStopThread() {
 	}
 	return 1;
 }
-	
-static void GUIElementsUpdate() {
+
+
+/* Thread safe - doesn't care about the lock */
+static void GUIElementsUpdate(SyncOptions_t* SafeSets, SyncStats_t* SafeStats) {
 	const char* lpstr;
 	char StrBuff[128];
 	DWORD dwInt;
 	int TimePercent;
 
-	EnterCriticalSection(&ProgramDataCS);
-
 	/* Only update the elements if the main loop finished another cycle */
-	if(Stats.UpdateElements) {
+	if(SafeStats->UpdateElements) {
 		/* System UTC Time */
-		lpstr = ctime(&Stats.SysUTCTime);
+		lpstr = ctime(&SafeStats->SysUTCTime);
 		SetDlgItemText(hMainDlg,IDT_SYSUTC,lpstr);		
-
-		/* FS UTC Time - only if connected to FS */
-		if(Stats.SimStatus) {
-			lpstr = ctime(&Stats.SimUTCTime);	
-			SetDlgItemText(hMainDlg,IDT_SIMUTC,lpstr);
-		}
 	
-		if(Stats.SyncLastModified) {
-			sprintf(StrBuff,"Last synchronizated in %s",ctime(&Stats.SyncLast));
+		if(SafeStats->SyncLastModified) {
+			sprintf(StrBuff,"Last synchronizated in %s",ctime(&SafeStats->SyncLast));
 			SetDlgItemText(hMainDlg,IDT_LASTSYNC,StrBuff);
-			Stats.SyncLastModified = 0;
+			SafeStats->SyncLastModified = 0;
 		}
 	
 		/* Sync status */
-		if(Stats.SimStatus) {
-			if(Stats.SimUTCTime > Stats.SysUTCTime)
-				TimePercent = Stats.SimUTCTime - Stats.SysUTCTime;
+		if(SafeStats->SimStatus) {
+			/* FS UTC Time */	
+			lpstr = ctime(&SafeStats->SimUTCTime);	
+			SetDlgItemText(hMainDlg,IDT_SIMUTC,lpstr);
+			
+			/* Sync status */
+			if(SafeStats->SimUTCTime > SafeStats->SysUTCTime)
+				TimePercent = SafeStats->SimUTCTime - SafeStats->SysUTCTime;
 			else
-				TimePercent = Stats.SysUTCTime - Stats.SimUTCTime;
+				TimePercent = SafeStats->SysUTCTime - SafeStats->SimUTCTime;
 			TimePercent = 600 - TimePercent;
 			if(TimePercent > 600)
 				TimePercent = 600;
@@ -515,38 +560,37 @@ static void GUIElementsUpdate() {
 	}
 	
 	if(GetRTVal(FST_AUTOMODE)) {
-		if(Stats.SimStatus) {		
-			if(Stats.SyncNext <= time(NULL))	
-				dwInt = Settings.AutoSyncInterval;
+		if(SafeStats->SimStatus) {		
+			if(SafeStats->SyncNext <= time(NULL))	
+				dwInt = SafeSets->AutoSyncInterval;
 			else
-				dwInt = Stats.SyncNext - time(NULL);
+				dwInt = SafeStats->SyncNext - time(NULL);
 			sprintf(StrBuff,"Next synchronization in %u seconds.",dwInt);
 			SetDlgItemText(hMainDlg,IDT_NEXTSYNC,StrBuff);
-			dwInt = Stats.SyncInterval - dwInt;
-			SendDlgItemMessage(hMainDlg,IDP_NEXTSYNC, PBM_SETRANGE, 0, (LPARAM)MAKELPARAM(0, Stats.SyncInterval)); 
+			dwInt = SafeStats->SyncInterval - dwInt;
+			SendDlgItemMessage(hMainDlg,IDP_NEXTSYNC, PBM_SETRANGE, 0, (LPARAM)MAKELPARAM(0, SafeStats->SyncInterval)); 
 			SendDlgItemMessage(hMainDlg,IDP_NEXTSYNC, PBM_SETPOS, (WPARAM)dwInt, 0); 
 		}
 	}
-	Stats.UpdateElements = 0; /* No need to re-update the elements if nothing has changed */
-	
-	LeaveCriticalSection(&ProgramDataCS);
+	SafeStats->UpdateElements = 0; /* No need to re-update the elements if nothing has changed */
+
 }	
 
-static void GUIUpdate() {	
+
+/* Thread safe - doesn't care about the lock */	
+static void GUIUpdate(SyncOptions_t* SafeSets, SyncStats_t* SafeStats) {	
 	HWND hBSync = GetDlgItem(hMainDlg,IDB_SYNCNOW);
 	HWND hTNoManual = GetDlgItem(hMainDlg,IDT_NOMANUAL);
 	HWND hPNextSync = GetDlgItem(hMainDlg,IDP_NEXTSYNC);		
 	HWND hToSync = GetDlgItem(hMainDlg,IDT_TOSYNC);
 	HWND hNextSync = GetDlgItem(hMainDlg,IDT_NEXTSYNC);
 	HWND hTLastSync = GetDlgItem(hMainDlg,IDT_LASTSYNC);
-		
+
 	/* Only update the window if main window exists */	
-	if(hMainDlg) {	
-		
-		EnterCriticalSection(&ProgramDataCS);
+	if(hMainDlg) {
 		
 		/* Things that are related to simstatus but not mode related are here */
-		if(Stats.SimStatus) {
+		if(SafeStats->SimStatus) {
 			switch(FSUIPC_FS_Version) {
 				case SIM_FS98:
 					SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"FS98 Running");
@@ -574,8 +618,8 @@ static void GUIUpdate() {
 			SetDlgItemText(hMainDlg,IDT_TOSYNC,"No simulator detected running. Please start your Microsoft Flight Simulator 98\\2000\\2002\\2004\\FS X.\n");
 		}		
 	
-		if(GetRTVal(FST_AUTOMODE)) {	
-			if(Stats.SimStatus) {
+		if(GetRTVal(FST_AUTOMODE)) {
+			if(SafeStats->SimStatus) {
 				ShowWindow(hToSync,SW_HIDE);
 				ShowWindow(hNextSync,SW_SHOW);
 				ShowWindow(hPNextSync,SW_SHOW);		
@@ -589,7 +633,7 @@ static void GUIUpdate() {
 			SetDlgItemText(hMainDlg,IDB_MODE,"Manual Mode");	
 			SetDlgItemText(hMainDlg,IDT_OPERMODE,"Automatic");										
 		} else {
-			if(Stats.SimStatus) {
+			if(SafeStats->SimStatus) {
 				EnableWindow(hBSync,TRUE);
 				SetDlgItemText(hMainDlg,IDT_TOSYNC,"To synchronizate the flight simulator clock, click on the\nSync Now button or the assigned hotkey (see options).");
 			} else {
@@ -604,26 +648,48 @@ static void GUIUpdate() {
 		}
 				
 		/* Update the main window's icon */
-		GUISetDialogIcon(hMainDlg,Stats.SimStatus);
-
-		LeaveCriticalSection(&ProgramDataCS);
+		GUISetDialogIcon(hMainDlg,SafeStats->SimStatus);
 	} 
-	
-	/* Update the GUI elements such as next sync and progress bar */
-	GUIElementsUpdate();
-	
+
+	/* It's okay to pass those parameters to these functions
+	   cause the caller of our function already locked them */
 	/* Update the tray icon to the new mode */
-	GUITrayUpdate();
-			
-	CloseHandle(hBSync);
-	CloseHandle(hTNoManual);
-	CloseHandle(hPNextSync);	
-	CloseHandle(hToSync);
-	CloseHandle(hNextSync);
+	GUITrayUpdate(SafeSets,SafeStats);
+
+	/* Update the GUI elements such as next sync and progress bar */
+	GUIElementsUpdate(SafeSets,SafeStats);
 }
 
-/* Loads the options from the structure into the dialog */
-static void GUIOptionsDraw(HWND hwnd,SyncOptions_t* Sets) {
+
+/* Thread safe - doesn't care about the lock */	
+static void GUITrayUpdate(SyncOptions_t* SafeSets, SyncStats_t* SafeStats) {
+	char* statusstr;
+	
+	if(SafeStats->SimStatus) {
+		TrayIconData.hIcon = hIcon;
+		statusstr = "Running";
+	} else {
+		TrayIconData.hIcon = hIconGray;
+		statusstr = "Not Running";
+	}
+		
+	if(GetRTVal(FST_AUTOMODE))
+		sprintf(TrayIconData.szTip,"FS Time Sync %s\nStatus: %s\nMode: Automatic\nInterval: %u seconds",Ver.VersionString,statusstr,SafeSets->AutoSyncInterval);
+	else
+		sprintf(TrayIconData.szTip,"FS Time Sync %s\nStatus\nMode: Manual",Ver.VersionString,statusstr);
+		
+	/* Only modify the tray icon if it exists. */
+	if(TrayIconState == 1) {
+		if(!Shell_NotifyIcon(NIM_MODIFY,&TrayIconData)) {
+			debuglog(DEBUG_ERROR,"Failed modifying tray icon!\n");
+		}
+	}
+
+}
+
+
+/* Thread safe - doesn't care about the lock */
+static void GUIOptionsDraw(HWND hwnd,SyncOptions_t* SafeSets) {
 	HWND hEUTCCorrection = GetDlgItem(hwnd,IDE_UTCCORRECTION);	
 	
 	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_RESETCONTENT,0,0);
@@ -632,33 +698,33 @@ static void GUIOptionsDraw(HWND hwnd,SyncOptions_t* Sets) {
 	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"30 seconds");			
 	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"60 seconds");
 	
-	if(Sets->StartMinimized)
+	if(SafeSets->StartMinimized)
 		SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
 	else
 		SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
 		
-	if(Sets->SystemUTCCorrectionState) {
+	if(SafeSets->SystemUTCCorrectionState) {
 		SendDlgItemMessage(hwnd,IDC_UTCCORRECTION,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
 		EnableWindow(hEUTCCorrection,TRUE);						
 	} else {
 		SendDlgItemMessage(hwnd,IDC_UTCCORRECTION,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);	
 		EnableWindow(hEUTCCorrection,FALSE);		
 	}
-		SetDlgItemInt(hwnd,IDE_UTCCORRECTION,Sets->SystemUTCCorrection,TRUE);	
+		SetDlgItemInt(hwnd,IDE_UTCCORRECTION,SafeSets->SystemUTCCorrection,TRUE);	
 
 	/* Reserved for future option, previously was Daylight Saving
-	if(Sets->FutureSetting)
+	if(SafeSets->FutureSetting)
 		SendDlgItemMessage(hwnd,IDC_FUTUREOPT3,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
 	else
 		SendDlgItemMessage(hwnd,IDC_FUTUREOPT3,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
 	*/
 	
-	if(Sets->AutoOnStart)
+	if(SafeSets->AutoOnStart)
 		SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
 	else
 		SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);																	
 			
-	switch(Sets->AutoSyncInterval) {
+	switch(SafeSets->AutoSyncInterval) {
 		case 5:
 			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)0,0);
 			break;
@@ -684,22 +750,22 @@ static void GUIOptionsDraw(HWND hwnd,SyncOptions_t* Sets) {
 	SendDlgItemMessage(hwnd,IDH_MANSYNCHOTKEY,HKM_SETHOTKEY,PendingSettings.ManSyncHotkey,0);
 	SendDlgItemMessage(hwnd,IDH_OPERMODEHOTKEY,HKM_SETHOTKEY,PendingSettings.ModeSwitchHotkey,0);	
 	
-	CloseHandle(hEUTCCorrection);	
 }
 
+/* Thread safe - doesn't care about the lock */
 /* Saves the options from the dialog into the structure */
-static void GUIOptionsSave(HWND hwnd,SyncOptions_t* Sets) {
+static void GUIOptionsSave(HWND hwnd,SyncOptions_t* SafeSets) {
 	if(SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_GETCHECK,0,0) == BST_CHECKED)
-		Sets->StartMinimized = 1;
+		SafeSets->StartMinimized = 1;
 	else
-		Sets->StartMinimized = 0;
+		SafeSets->StartMinimized = 0;
 		
 	if(SendDlgItemMessage(hwnd,IDC_UTCCORRECTION,BM_GETCHECK,0,0) == BST_CHECKED) {
-		Sets->SystemUTCCorrectionState = 1;
+		SafeSets->SystemUTCCorrectionState = 1;
 	} else {
-		Sets->SystemUTCCorrectionState = 0;	
+		SafeSets->SystemUTCCorrectionState = 0;	
 	}
-	Sets->SystemUTCCorrection = GetDlgItemInt(hwnd,IDE_UTCCORRECTION,NULL,TRUE);
+	SafeSets->SystemUTCCorrection = GetDlgItemInt(hwnd,IDE_UTCCORRECTION,NULL,TRUE);
 
 	/* Reserved for future option, previously was Daylight Saving	
 	if(SendDlgItemMessage(hwnd,IDC_FUTUREOPT3,BM_GETCHECK,0,0) == BST_CHECKED)
@@ -709,55 +775,35 @@ static void GUIOptionsSave(HWND hwnd,SyncOptions_t* Sets) {
 	*/
 			
 	if(SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_GETCHECK,0,0) == BST_CHECKED)
-		Sets->AutoOnStart = 1;
+		SafeSets->AutoOnStart = 1;
 	else
-		Sets->AutoOnStart = 0;			
+		SafeSets->AutoOnStart = 0;			
 		
 	switch(SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_GETCURSEL,0,0)) {
 		case 0:
-			Sets->AutoSyncInterval = 5;
+			SafeSets->AutoSyncInterval = 5;
 			break;
 		case 1:
-			Sets->AutoSyncInterval = 10;
+			SafeSets->AutoSyncInterval = 10;
 			break;
 		case 2:	
-			Sets->AutoSyncInterval = 30;
+			SafeSets->AutoSyncInterval = 30;
 			break;
 		case 3:
-			Sets->AutoSyncInterval = 60;
+			SafeSets->AutoSyncInterval = 60;
 			break;
 		default:
-			Sets->AutoSyncInterval = Defaults.AutoSyncInterval;
+			SafeSets->AutoSyncInterval = Defaults.AutoSyncInterval;
 			break;			
 	}
 	
 	/* Copy the hotkeys from the controls to the settings */
 	PendingSettings.ManSyncHotkey = SendDlgItemMessage(hwnd,IDH_MANSYNCHOTKEY,HKM_GETHOTKEY,0,0);
 	PendingSettings.ModeSwitchHotkey = SendDlgItemMessage(hwnd,IDH_OPERMODEHOTKEY,HKM_GETHOTKEY,0,0);
-	
 }
 
-static void GUITrayUpdate() {
-	/* todo: Add code to change the tray icon to grey depending on SimStatus */
-	
-	if(GetRTVal(FST_AUTOMODE))
-		sprintf(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Automatic\nInterval: %u seconds",Settings.AutoSyncInterval);
-	else
-		strcpy(TrayIconData.szTip,"FS Time Sync v1.0\nMode: Manual");
-	
-	if(Stats.SimStatus)
-		TrayIconData.hIcon = hIcon;
-	else
-		TrayIconData.hIcon = hIconGray;
-		
-	/* Only modify the tray icon if it exists. */
-	if(TrayIconState == 1) {
-		if(!Shell_NotifyIcon(NIM_MODIFY,&TrayIconData)) {
-			debuglog(DEBUG_ERROR,"Failed modifying tray icon!\n");
-		}
-	}
-}
 
+/* Thread safe - doesn't care about the lock */	
 static void GUIOpenMain() {
 	HWND hTemphwnd;
 	if(hMainDlg == NULL) {
@@ -773,6 +819,8 @@ static void GUIOpenMain() {
 	}
 }
 
+
+/* Thread safe - doesn't care about the lock */	
 static void GUISetDialogIcon(HWND hwnd, DWORD Color) {
 	if(Color) {
 		SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
@@ -783,6 +831,8 @@ static void GUISetDialogIcon(HWND hwnd, DWORD Color) {
 	}	
 }
 
+
+/* Thread safe - doesn't care about the lock */	
 static void GUISyncNowEvent() {
 	/* Checking for manual mode first */
 	if(!GetRTVal(FST_AUTOMODE)) {

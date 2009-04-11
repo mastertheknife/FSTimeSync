@@ -3,18 +3,23 @@
 #include "registry.h"
 #include "main.h"
 
+/* Thread safe but one warning */
+/* If src or dest is Settings, then it should be locked first */	
 void CopySettings(SyncOptions_t* dest, const SyncOptions_t* src) {
 	memcpy(dest,src,sizeof(SyncOptions_t));
 }
 
+/* Thread safe - doesn't care about the lock */	
 int RegistryStartup() {
 	return 1;
 }
-	
+
+/* Thread safe - doesn't care about the lock */	
 int RegistryShutdown() {
 	return 1;
 }
-	
+
+/* Thread safe - doesn't care about the lock */	
 int RegistryReadSettings(SyncOptions_t* ReadSettings) {
 	HKEY hRegKey = NULL;
 	LONG nRegResult;
@@ -112,7 +117,7 @@ int RegistryReadSettings(SyncOptions_t* ReadSettings) {
 	return 1;	
 }
 
-
+/* Thread safe - doesn't care about the lock */	
 int RegistryWriteSettings(SyncOptions_t* WriteSettings) {
 	HKEY hRegKey = NULL;	
 	DWORD dwTemp; /* Used for convert the WORDs to DWORDs of the hotkeys */
