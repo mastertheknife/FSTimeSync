@@ -31,7 +31,8 @@ int RegistryReadSettings(SyncOptions_t* ReadSettings) {
 		ReadSettings->StartMinimized = Defaults.StartMinimized;
 		ReadSettings->SystemUTCCorrectionState = Defaults.SystemUTCCorrectionState;
 		ReadSettings->SystemUTCCorrection = Defaults.SystemUTCCorrection;
-		/* ReadSettings->FutureSetting = Defaults.FutureSetting; */
+		ReadSettings->NoSyncPaused = Defaults.NoSyncPaused;
+		ReadSettings->NoSyncSimRate = Defaults.NoSyncSimRate;
 		ReadSettings->AutoOnStart = Defaults.AutoOnStart;	
 		ReadSettings->AutoSyncInterval = Defaults.AutoSyncInterval;
 		ReadSettings->DisableAffinityFix = Defaults.DisableAffinityFix;
@@ -62,15 +63,20 @@ int RegistryReadSettings(SyncOptions_t* ReadSettings) {
 		ReadSettings->SystemUTCCorrection = Defaults.SystemUTCCorrection;
 	}
 	
-	/* Reserved for future option, previously was Daylight Saving
-	if((nRegResult = RegQueryValueEx(hRegKey,"FutureSetting",0,NULL,(LPVOID)&(ReadSettings->FutureSetting),&dwSize)) != ERROR_SUCCESS) {
+	if((nRegResult = RegQueryValueEx(hRegKey,"NoSyncPaused",0,NULL,(LPVOID)&(ReadSettings->NoSyncPaused),&dwSize)) != ERROR_SUCCESS) {
 		if(nRegResult != ERROR_FILE_NOT_FOUND)
-			debuglog(DEBUG_WARNING,"Failed reading FutureSetting registry value.\n");
-			
-		ReadSettings->FutureSetting = Defaults.FutureSetting;
-	}	
-	*/
-	
+			debuglog(DEBUG_WARNING,"Failed reading NoSyncPaused registry value.\n");
+
+		ReadSettings->NoSyncPaused = Defaults.NoSyncPaused;
+	}
+
+	if((nRegResult = RegQueryValueEx(hRegKey,"NoSyncSimRate",0,NULL,(LPVOID)&(ReadSettings->NoSyncSimRate),&dwSize)) != ERROR_SUCCESS) {
+		if(nRegResult != ERROR_FILE_NOT_FOUND)
+			debuglog(DEBUG_WARNING,"Failed reading NoSyncSimRate registry value.\n");
+
+		ReadSettings->NoSyncSimRate = Defaults.NoSyncSimRate;
+	}
+
 	if((nRegResult = RegQueryValueEx(hRegKey,"AutoOnStart",0,NULL,(LPVOID)&(ReadSettings->AutoOnStart),&dwSize)) != ERROR_SUCCESS) {
 		if(nRegResult != ERROR_FILE_NOT_FOUND)
 			debuglog(DEBUG_WARNING,"Failed reading AutoOnStart registry value.\n");
@@ -138,13 +144,15 @@ int RegistryWriteSettings(SyncOptions_t* WriteSettings) {
 	if(RegSetValueEx(hRegKey,"SystemUTCCorrection",0,REG_DWORD,(LPVOID)&(WriteSettings->SystemUTCCorrection),sizeof(DWORD)) != ERROR_SUCCESS) {
 		debuglog(DEBUG_WARNING,"Failed writingSystemUTCCorrection registry value.\n");		
 	}
-	
-	/* Reserved for future option, previously was Daylight Saving
-	if(RegSetValueEx(hRegKey,"FutureSetting",0,REG_DWORD,(LPVOID)&(WriteSettings->FutureSetting),sizeof(DWORD)) != ERROR_SUCCESS) {
-		debuglog(DEBUG_WARNING,"Failed writing FutureSetting registry value.\n");		
+
+	if(RegSetValueEx(hRegKey,"NoSyncPaused",0,REG_DWORD,(LPVOID)&(WriteSettings->NoSyncPaused),sizeof(DWORD)) != ERROR_SUCCESS) {
+		debuglog(DEBUG_WARNING,"Failed writing NoSyncPaused registry value.\n");		
 	}
-	*/
-	
+
+	if(RegSetValueEx(hRegKey,"NoSyncSimRate",0,REG_DWORD,(LPVOID)&(WriteSettings->NoSyncSimRate),sizeof(DWORD)) != ERROR_SUCCESS) {
+		debuglog(DEBUG_WARNING,"Failed writing NoSyncSimRate registry value.\n");		
+	}
+
 	if(RegSetValueEx(hRegKey,"AutoOnStart",0,REG_DWORD,(LPVOID)&(WriteSettings->AutoOnStart),sizeof(DWORD)) != ERROR_SUCCESS) {
 		debuglog(DEBUG_WARNING,"Failed writing AutoOnStart registry value.\n");		
 	}

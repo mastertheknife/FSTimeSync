@@ -15,6 +15,8 @@ typedef struct tagSyncOptions {
 	DWORD AutoSyncInterval;
 	DWORD DisableAffinityFix;
 	DWORD DisablePriorityFix;
+	DWORD NoSyncPaused;
+	DWORD NoSyncSimRate;
 	LONG SystemUTCCorrection;	
 	WORD ManSyncHotkey;
 	WORD ModeSwitchHotkey;

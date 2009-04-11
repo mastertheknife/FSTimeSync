@@ -17,7 +17,8 @@
 #define IDH_OPERMODEHOTKEY                      1006
 #define IDC_AUTOSYNCSTARTUP                     1007
 #define IDC_STARTMINIMIZED                      1008
-#define IDC_FUTUREOPT3                          1009
+#define IDC_NOSYNCPAUSED                        1009
+#define IDC_NOSYNCSIMRATE                       1010
 #define IDC_UTCCORRECTION                       1011
 #define IDE_UTCCORRECTION                       1012
 #define IDH_MANSYNCHOTKEY                       1014

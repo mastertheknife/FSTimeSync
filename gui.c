@@ -247,14 +247,10 @@ static BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 static BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam) {
 	switch(Message) {
 		case WM_INITDIALOG:
-			{				
-				/* TEMPORARY: Hide the reserved option (previously was Daylight Saving) */
-				HWND hOpt3 = GetDlgItem(hwnd,IDC_FUTUREOPT3);
-				ShowWindow(hOpt3,SW_HIDE);				
-				
+			{
 				/* Set the icon for this dialog */
 				GUISetDialogIcon(hwnd,1);
-				
+
 				/* Copy the settings from main to here */
 				EnterCriticalSection(&ProgramDataCS);
 				CopySettings(&PendingSettings,&Settings);
@@ -726,12 +722,15 @@ static void GUIOptionsDraw(HWND hwnd,SyncOptions_t* SafeSets) {
 	}
 		SetDlgItemInt(hwnd,IDE_UTCCORRECTION,SafeSets->SystemUTCCorrection,TRUE);	
 
-	/* Reserved for future option, previously was Daylight Saving
-	if(SafeSets->FutureSetting)
-		SendDlgItemMessage(hwnd,IDC_FUTUREOPT3,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
+	if(SafeSets->NoSyncPaused)
+		SendDlgItemMessage(hwnd,IDC_NOSYNCPAUSED,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
 	else
-		SendDlgItemMessage(hwnd,IDC_FUTUREOPT3,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
-	*/
+		SendDlgItemMessage(hwnd,IDC_NOSYNCPAUSED,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
+
+	if(SafeSets->NoSyncSimRate)
+		SendDlgItemMessage(hwnd,IDC_NOSYNCSIMRATE,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
+	else
+		SendDlgItemMessage(hwnd,IDC_NOSYNCSIMRATE,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);		
 	
 	if(SafeSets->AutoOnStart)
 		SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
@@ -790,12 +789,15 @@ static void GUIOptionsSave(HWND hwnd,SyncOptions_t* SafeSets) {
 	}
 	SafeSets->SystemUTCCorrection = GetDlgItemInt(hwnd,IDE_UTCCORRECTION,NULL,TRUE);
 
-	/* Reserved for future option, previously was Daylight Saving	
-	if(SendDlgItemMessage(hwnd,IDC_FUTUREOPT3,BM_GETCHECK,0,0) == BST_CHECKED)
-		Sets->FutureSetting = 1;
+	if(SendDlgItemMessage(hwnd,IDC_NOSYNCPAUSED,BM_GETCHECK,0,0) == BST_CHECKED)
+		SafeSets->NoSyncPaused = 1;
 	else
-		Sets->FutureSetting = 0;
-	*/
+		SafeSets->NoSyncPaused = 0;
+
+	if(SendDlgItemMessage(hwnd,IDC_NOSYNCSIMRATE,BM_GETCHECK,0,0) == BST_CHECKED)
+		SafeSets->NoSyncSimRate = 1;
+	else
+		SafeSets->NoSyncSimRate = 0;
 			
 	if(SendDlgItemMessage(hwnd,IDC_AUTOSYNCSTARTUP,BM_GETCHECK,0,0) == BST_CHECKED)
 		SafeSets->AutoOnStart = 1;

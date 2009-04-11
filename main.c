@@ -11,7 +11,7 @@
 
 /* Globals */
 SyncOptions_t Settings;
-SyncOptions_t Defaults = {0,0,0,1,10,0,0,0,MAKEWORD(0x53,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(0x4D,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* Default options */
+SyncOptions_t Defaults = {0,0,0,1,10,0,0,0,1,0,MAKEWORD(0x53,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(0x4D,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* Default options */
 SyncStats_t Stats;
 CRITICAL_SECTION ProgramDataCS;
 static RuntimeVals_t RuntimeVals;
