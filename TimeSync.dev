@@ -31,21 +31,21 @@ CompilerSettings=00000000010100000001b0
 
 [VersionInfo]
 Major=0
-Minor=1
-Release=1
-Build=1
+Minor=9
+Release=0
+Build=17
 LanguageID=1033
 CharsetID=1252
-CompanyName=
-FileVersion=
-FileDescription=Developed using the Dev-C++ IDE
-InternalName=
+CompanyName=Kfir Itzhak (mastertheknife)
+FileVersion=v0.9
+FileDescription=
+InternalName=TimeSync.exe
 LegalCopyright=
 LegalTrademarks=
-OriginalFilename=
-ProductName=
-ProductVersion=
-AutoIncBuildNr=0
+OriginalFilename=TimeSync.exe
+ProductName=FS Time Sync
+ProductVersion=v0.9
+AutoIncBuildNr=1
 
 [Unit1]
 FileName=main.c

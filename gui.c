@@ -519,6 +519,8 @@ static void GUIElementsUpdate(SyncOptions_t* SafeSets, SyncStats_t* SafeStats) {
 	const char* lpstr;
 	char StrBuff[128];
 	DWORD dwInt;
+	DWORD dwInt2;
+	DWORD dwInt3;
 	int TimePercent;
 
 	/* Only update the elements if the main loop finished another cycle */
@@ -565,7 +567,16 @@ static void GUIElementsUpdate(SyncOptions_t* SafeSets, SyncStats_t* SafeStats) {
 				dwInt = SafeSets->AutoSyncInterval;
 			else
 				dwInt = SafeStats->SyncNext - time(NULL);
-			sprintf(StrBuff,"Next synchronization in %u seconds.",dwInt);
+			if(dwInt >= 60) {
+				dwInt2 = floor(((double)dwInt)/60);
+				dwInt3 = dwInt % 60;
+				if(dwInt2 == 1)
+					sprintf(StrBuff,"Next synchronization in %u minute and %u seconds.",dwInt2,dwInt3);
+				else
+					sprintf(StrBuff,"Next synchronization in %u minutes and %u seconds.",dwInt2,dwInt3);				
+			} else {
+				sprintf(StrBuff,"Next synchronization in %u seconds.",dwInt);
+			}
 			SetDlgItemText(hMainDlg,IDT_NEXTSYNC,StrBuff);
 			dwInt = SafeStats->SyncInterval - dwInt;
 			SendDlgItemMessage(hMainDlg,IDP_NEXTSYNC, PBM_SETRANGE, 0, (LPARAM)MAKELPARAM(0, SafeStats->SyncInterval)); 
@@ -676,7 +687,7 @@ static void GUITrayUpdate(SyncOptions_t* SafeSets, SyncStats_t* SafeStats) {
 	if(GetRTVal(FST_AUTOMODE))
 		sprintf(TrayIconData.szTip,"FS Time Sync %s\nStatus: %s\nMode: Automatic\nInterval: %u seconds",Ver.VersionString,statusstr,SafeSets->AutoSyncInterval);
 	else
-		sprintf(TrayIconData.szTip,"FS Time Sync %s\nStatus\nMode: Manual",Ver.VersionString,statusstr);
+		sprintf(TrayIconData.szTip,"FS Time Sync %s\nStatus: %s\nMode: Manual",Ver.VersionString,statusstr);
 		
 	/* Only modify the tray icon if it exists. */
 	if(TrayIconState == 1) {
@@ -696,8 +707,11 @@ static void GUIOptionsDraw(HWND hwnd,SyncOptions_t* SafeSets) {
 	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"5 seconds");				
 	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"10 seconds");
 	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"30 seconds");			
-	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"60 seconds");
-	
+	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"1 minute");
+	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"2 minutes");
+	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"3 minutes");
+	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"5 minutes");
+
 	if(SafeSets->StartMinimized)
 		SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
 	else
@@ -736,6 +750,15 @@ static void GUIOptionsDraw(HWND hwnd,SyncOptions_t* SafeSets) {
 			break;
 		case 60:
 			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)3,0);
+			break;
+		case 120:
+			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)4,0);
+			break;
+		case 180:
+			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)5,0);
+			break;
+		case 300:
+			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)6,0);
 			break;
 		default:
 			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)1,0);
@@ -791,6 +814,15 @@ static void GUIOptionsSave(HWND hwnd,SyncOptions_t* SafeSets) {
 			break;
 		case 3:
 			SafeSets->AutoSyncInterval = 60;
+			break;
+		case 4:
+			SafeSets->AutoSyncInterval = 120;
+			break;
+		case 5:
+			SafeSets->AutoSyncInterval = 180;
+			break;
+		case 6:
+			SafeSets->AutoSyncInterval = 300;
 			break;
 		default:
 			SafeSets->AutoSyncInterval = Defaults.AutoSyncInterval;

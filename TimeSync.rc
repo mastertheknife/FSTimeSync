@@ -115,3 +115,4 @@ FONT 8, "Ms Shell Dlg 2", 0, 0, 1
 //
 LANGUAGE LANG_ENGLISH, SUBLANG_NEUTRAL
 1                  RT_MANIFEST    ".\\manifest.xml"
+
