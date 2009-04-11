@@ -67,6 +67,13 @@ int SyncGo(time_t* UTCtime) {
 		return 0;
 	}
 	
+	/* Assign the values */
+	FSTime.UTCHour = ptm->tm_hour;
+	FSTime.UTCMinute = ptm->tm_min;
+	FSTime.Second = ptm->tm_sec;
+	FSDate.Day = ptm->tm_yday + 1;
+	FSDate.Year = ptm->tm_year + 1900;
+
 	/* Need to warp the hour to keep it within 00 to 23 and minutes within 00 to 59 */
 	WrapHour = (int)(floor((double)TimeDifference / 60)) + FSTime.UTCHour;
 	if(WrapHour < 0)
@@ -79,14 +86,9 @@ int SyncGo(time_t* UTCtime) {
 	if(WrapMinute >= 60)
 		WrapMinute %= 60;
 
-	/* Assign the values */
+	/* Set up the local time */
 	FSTime.LocalHour = WrapHour;		
 	FSTime.LocalMinute = WrapMinute;	
-	FSTime.UTCHour = ptm->tm_hour;
-	FSTime.UTCMinute = ptm->tm_min;
-	FSTime.Second = ptm->tm_sec;
-	FSDate.Day = ptm->tm_yday + 1;
-	FSDate.Year = ptm->tm_year + 1900;
 	
 	if(!FSUIPC_Write(0x238,5,&FSTime,&nResult)) {
 		debuglog(DEBUG_ERROR,"Failed writing time data to FS, FSUIPC returned: %u\n",nResult);
@@ -174,7 +176,7 @@ int SyncGetTime(time_t* UTCtime) {
    against the UTC time in the area we're flying in */
 static int SyncGetSimUTCLocalDifference(int* ZoneDifference) {
 	DWORD nResult;
-	int Tempdiff;
+	short Tempdiff = 0;
 	
 	if(!SyncConStatus) {
 		debuglog(DEBUG_ERROR,"Called although simulator isn't connected!\n");
