@@ -37,10 +37,17 @@ typedef struct tagRV {
 	DWORD bAutoMode;
 } RuntimeVals_t;
 
+typedef struct tagVersion {
+	char* compiletime;
+	char* compiledate;
+	char* VersionString;
+} Version_t;
+
 extern SyncOptions_t Settings; /* The options! */
 extern SyncOptions_t Defaults; /* Default options */
 extern CRITICAL_SECTION ProgramDataCS; /* Critical section to protect the settings and stats structures */
 extern SyncStats_t Stats;
+extern Version_t Ver;
 
 void SetRTVal(int RTVal, int NewValue);
 DWORD GetRTVal(int RTVal);

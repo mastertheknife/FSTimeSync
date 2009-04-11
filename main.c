@@ -17,6 +17,9 @@ CRITICAL_SECTION ProgramDataCS;
 static RuntimeVals_t RuntimeVals;
 static CRITICAL_SECTION ProgramControlCS;
 
+/* Version info */
+Version_t Ver = {__TIME__,__DATE__,"v0.9"};
+
 int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpszArgument, int nCmdShow) {
 	/* Mutex to prevent multiple instances of this application */
   	if (CreateMutex(NULL,FALSE,"_FSTimeSyncMutex_") && GetLastError() == ERROR_ALREADY_EXISTS) {

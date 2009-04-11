@@ -135,18 +135,18 @@ static BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 			{
 				/* Set the icon for this dialog */
 				GUISetDialogIcon(hwnd,Stats.SimStatus);
-				
+
 				/* Create the draw timer */
 				hDrawTimer = SetTimer(hwnd,4231,200,NULL);
 
 				/* Set the hMainDlg handle for the next call */
 				hMainDlg = hwnd;
-												
+
 				/* Draw the dialog elements */
 				GUIUpdate();
 
 				/* Update the dialog elements */
-				GUIElementsUpdate();			
+				GUIElementsUpdate();
 			}
 			break;
 		case WM_TIMER:
@@ -178,6 +178,11 @@ static BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 					break;	
 				case IDB_SYNCNOW:
 					GUISyncNowEvent();					
+					break;
+				case IDB_ABOUT:
+					{
+						int nRet = DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_ABOUT), hMainDlg, AboutDlgProc);
+					}
 					break;
 				default:
 					return FALSE;
@@ -275,6 +280,36 @@ static BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPAR
 			break;		
 		case WM_CLOSE:
 			EndDialog(hwnd,IDB_CANCEL);
+			break;
+		default:
+			return FALSE;
+	}
+	return TRUE;
+}
+
+static BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam) {
+	switch(Message) {
+		case WM_INITDIALOG:
+			{
+				GUISetDialogIcon(hwnd,1);
+				ShowWindow(hwnd,SW_HIDE); /* Hide the window before processing */
+				char StrBuff[128];
+				sprintf(StrBuff,"FS Time Sync %s",Ver.VersionString);
+				SetDlgItemText(hwnd,IDT_ABOUTL1,StrBuff);
+				SetDlgItemText(hwnd,IDT_ABOUTL2,"by mastertheknife");
+				sprintf(StrBuff,"%s %s",Ver.compiledate,Ver.compiletime);
+				SetDlgItemText(hwnd,IDT_ABOUTL3,StrBuff);
+				ShowWindow(hwnd,SW_SHOW);
+			}
+			break;
+		case WM_COMMAND:
+			if(LOWORD(wParam) == IDB_CLOSE)
+				EndDialog(hwnd,IDB_CLOSE);
+			else
+				return FALSE;
+			break;
+		case WM_CLOSE:
+			EndDialog(hwnd,1);
 			break;
 		default:
 			return FALSE;
@@ -469,7 +504,11 @@ static void GUIElementsUpdate() {
 				TimePercent = 600;
 			if(TimePercent < 0)
 				TimePercent = 0;
-			dwInt = ((((double)TimePercent) / ((double)600))* 100)+0.5;				
+			dwInt = floor(((((double)TimePercent) / ((double)600))* 100)+0.5);
+			if(dwInt > 100)
+				dwInt = 100;
+			if(dwInt < 0)
+				dwInt = 0;
 			sprintf(StrBuff,"%u%%",dwInt);
 			SetDlgItemText(hMainDlg,IDT_SYNCSTATUS,StrBuff);
 		}
