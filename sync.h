@@ -19,7 +19,7 @@ typedef struct tagFSDate_t {
    WORD Year; // 0x240
 } FSDate_t;
 
-int SyncConnect();
+int SyncConnect(DWORD Sim);
 int SyncDisconnect();
 int SyncGetConStatus();
 int SyncGo(time_t* UTCtime);

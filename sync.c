@@ -7,10 +7,10 @@ static DWORD SyncConStatus;
 
 /*** Global functions ***/
 /* Attempts to connect to the simulator */
-int SyncConnect(void) {
+int SyncConnect(DWORD Sim) {
 	DWORD nResult;
 	
-	if(FSUIPC_Open(SIM_ANY,&nResult))
+	if(FSUIPC_Open(Sim,&nResult))
 		SyncConStatus = 1;
 	else
 		SyncConStatus = 0;	

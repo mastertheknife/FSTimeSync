@@ -24,8 +24,8 @@ int RegistryReadSettings(SyncOptions_t* ReadSettings) {
 	if(RegOpenKeyEx(HKEY_CURRENT_USER,"Software\\mastertheknife\\FS Time Sync",0,KEY_READ,&hRegKey) != ERROR_SUCCESS) {
 		debuglog(DEBUG_WARNING,"Failed opening registry key for reading.\n");
 		ReadSettings->StartMinimized = Defaults.StartMinimized;
-		ReadSettings->SystemUTCOffsetState = Defaults.SystemUTCOffsetState;
-		ReadSettings->SystemUTCOffset = Defaults.SystemUTCOffset;
+		ReadSettings->SystemUTCCorrectionState = Defaults.SystemUTCCorrectionState;
+		ReadSettings->SystemUTCCorrection = Defaults.SystemUTCCorrection;
 		/* ReadSettings->FutureSetting = Defaults.FutureSetting; */
 		ReadSettings->AutoOnStart = Defaults.AutoOnStart;	
 		ReadSettings->AutoSyncInterval = Defaults.AutoSyncInterval;
@@ -43,18 +43,18 @@ int RegistryReadSettings(SyncOptions_t* ReadSettings) {
 		ReadSettings->StartMinimized = Defaults.StartMinimized;
 	}
 	
-	if((nRegResult = RegQueryValueEx(hRegKey,"SystemUTCOffsetState",0,NULL,(LPVOID)&(ReadSettings->SystemUTCOffsetState),&dwSize)) != ERROR_SUCCESS) {
+	if((nRegResult = RegQueryValueEx(hRegKey,"SystemUTCCorrectionState",0,NULL,(LPVOID)&(ReadSettings->SystemUTCCorrectionState),&dwSize)) != ERROR_SUCCESS) {
 		if(nRegResult != ERROR_FILE_NOT_FOUND)
-			debuglog(DEBUG_WARNING,"Failed reading SystemUTCOffsetState registry value.\n");
+			debuglog(DEBUG_WARNING,"Failed reading SystemUTCCorrectionState registry value.\n");
 			
-		ReadSettings->SystemUTCOffsetState = Defaults.SystemUTCOffsetState;
+		ReadSettings->SystemUTCCorrectionState = Defaults.SystemUTCCorrectionState;
 	}
 	
-	if((nRegResult = RegQueryValueEx(hRegKey,"SystemUTCOffset",0,NULL,(LPVOID)&(ReadSettings->SystemUTCOffset),&dwSize)) != ERROR_SUCCESS) {
+	if((nRegResult = RegQueryValueEx(hRegKey,"SystemUTCCorrection",0,NULL,(LPVOID)&(ReadSettings->SystemUTCCorrection),&dwSize)) != ERROR_SUCCESS) {
 		if(nRegResult != ERROR_FILE_NOT_FOUND)
-			debuglog(DEBUG_WARNING,"Failed reading SystemUTCOffset registry value.\n");
+			debuglog(DEBUG_WARNING,"Failed reading SystemUTCCorrection registry value.\n");
 			
-		ReadSettings->SystemUTCOffset = Defaults.SystemUTCOffset;
+		ReadSettings->SystemUTCCorrection = Defaults.SystemUTCCorrection;
 	}
 	
 	/* Reserved for future option, previously was Daylight Saving
@@ -126,12 +126,12 @@ int RegistryWriteSettings(SyncOptions_t* WriteSettings) {
 		debuglog(DEBUG_WARNING,"Failed writing StartMinimized registry value.\n");		
 	}
 	
-	if(RegSetValueEx(hRegKey,"SystemUTCOffsetState",0,REG_DWORD,(LPVOID)&(WriteSettings->SystemUTCOffsetState),sizeof(DWORD)) != ERROR_SUCCESS) {
-		debuglog(DEBUG_WARNING,"Failed writing SystemUTCOffsetState registry value.\n");		
+	if(RegSetValueEx(hRegKey,"SystemUTCCorrectionState",0,REG_DWORD,(LPVOID)&(WriteSettings->SystemUTCCorrectionState),sizeof(DWORD)) != ERROR_SUCCESS) {
+		debuglog(DEBUG_WARNING,"Failed writing SystemUTCCorrectionState registry value.\n");		
 	}
 	
-	if(RegSetValueEx(hRegKey,"SystemUTCOffset",0,REG_DWORD,(LPVOID)&(WriteSettings->SystemUTCOffset),sizeof(DWORD)) != ERROR_SUCCESS) {
-		debuglog(DEBUG_WARNING,"Failed writing SystemUTCOffset registry value.\n");		
+	if(RegSetValueEx(hRegKey,"SystemUTCCorrection",0,REG_DWORD,(LPVOID)&(WriteSettings->SystemUTCCorrection),sizeof(DWORD)) != ERROR_SUCCESS) {
+		debuglog(DEBUG_WARNING,"Failed writingSystemUTCCorrection registry value.\n");		
 	}
 	
 	/* Reserved for future option, previously was Daylight Saving

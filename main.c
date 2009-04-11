@@ -1,4 +1,4 @@
-#define SLEEP_DURATION 200
+#define SLEEP_DURATION 100
 #include "globalinc.h"
 #include "debug.h"
 #include "main.h"
@@ -7,6 +7,7 @@
 #include "registry.h"
 #include <windows.h>
 #include <commctrl.h>
+#include "FSUIPC_User.h"
 
 /* Globals */
 SyncOptions_t Settings;
@@ -63,8 +64,8 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 			debuglog(DEBUG_ERROR,"mktime failed making system UTC time!\n");
 			Stats.SysUTCTime = CurrentTime; /* If we can't get UTC, then lets have local */
 		}
-		if(Settings.SystemUTCOffsetState)
-			Stats.SysUTCTime += Settings.SystemUTCOffset*60;
+		if(Settings.SystemUTCCorrectionState)
+			Stats.SysUTCTime += Settings.SystemUTCCorrection*60;
 
 		/* Only proceed if sim is connected */
 		if(Stats.SimStatus) {
@@ -107,7 +108,11 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 			} /* Mode */
 		} else {
 			/* Connect to the sim */
-			Stats.SimStatus = SyncConnect();		
+			Stats.SimStatus = SyncConnect(SIM_ANY);
+			/* Set up the affinity fix and\or the priority fix depending on settings */
+			if(Stats.SimStatus)
+				AffinityPriorityFix(Settings.DisableAffinityFix,Settings.DisablePriorityFix);
+				
 			/* Signal GUI thread to call GUIUpdate - needed for tray icon */				
 			PostMessage(hDummyWindow,WM_USER+1,10,0);
 
@@ -222,4 +227,81 @@ int HotkeysUnregister(HWND hwnd) {
 	return 1;
 }
 
+static int AffinityPriorityFix(DWORD DisableAffinityFix, DWORD DisablePriorityFix) {
+	HWND hFShwnd;
+	DWORD nPriority;
+	DWORD nProcAffinity;
+	DWORD nSysAffinity;
+	DWORD nProcId;
+	HANDLE hFS;	
+
+	if(!Settings.DisableAffinityFix || !Settings.DisablePriorityFix) {
+
+		/* Start by finding the window */
+		switch(FSUIPC_FS_Version) {
+			case SIM_FSX:
+				hFShwnd = FindWindow(NULL,"Microsoft Flight Simulator X");
+				break;
+			case SIM_FS2K4:
+				hFShwnd = FindWindow(NULL,"Microsoft Flight Simulator 2004 - A Century of Flight");
+				break;
+			case SIM_FS2K2:
+				hFShwnd = FindWindow(NULL,"Microsoft Flight Simulator 2002");
+				break;
+			case SIM_FS2K:
+				hFShwnd = FindWindow(NULL,"Microsoft Flight Simulator 2000");
+				break;
+			case SIM_FS98:
+				hFShwnd = FindWindow(NULL,"Microsoft Flight Simulator 98");
+				break;
+			default:
+				/* Couldn't find the window name, giving up on affinity or priority fix */
+				debuglog(DEBUG_WARNING,"Unknown FS, don't know what window to search\n");
+				return 0;
+		}
+		
+		if(hFShwnd == NULL) {
+			debuglog(DEBUG_WARNING,"Failed finding the window for the connected FS\n");
+			return 0;
+		}
+	
+		GetWindowThreadProcessId(hFShwnd,&nProcId);
+		if(!nProcId) {
+			debuglog(DEBUG_WARNING,"Failed getting FS process ID\n");
+			return 0;
+		}
+	
+		hFS = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_SET_INFORMATION,FALSE,nProcId);
+		if(hFS == NULL) {
+			debuglog(DEBUG_WARNING,"Failed opening FS process!\n");
+			return 0;
+		}
+		
+		/* Get FS priority class and copy it to our process */		
+		if(!DisablePriorityFix) {
+			if(!(nPriority = GetPriorityClass(hFS))) {
+				debuglog(DEBUG_WARNING,"Failed getting FS priority class!\n");
+			} else {
+				if(!SetPriorityClass(GetCurrentProcess(),nPriority))
+					debuglog(DEBUG_WARNING,"Failed setting priority class!\n");
+			}
+		}		
+		
+		/* Get FS affinity mask and copy it to our process */
+		if(!DisableAffinityFix) {
+			if(!GetProcessAffinityMask(hFS,&nProcAffinity,&nSysAffinity)) {
+				debuglog(DEBUG_WARNING,"Failed getting FS affinity mask!\n");
+			} else {
+				if(!SetProcessAffinityMask(GetCurrentProcess(),nProcAffinity))
+					debuglog(DEBUG_WARNING,"Failed setting affinity mask!\n");
+			}
+		}		
+		
+		/* Finished with the FS process, let's close it */		
+		CloseHandle(hFS);
+				
+	}
+	return 1;
+	
+}
 

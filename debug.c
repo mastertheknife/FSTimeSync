@@ -31,16 +31,24 @@ const char* DebugGetMaskString(unsigned long nmask) {
 }										
 									
 int DebugStartup(void) {
+#ifndef _DEBUG
+	/* Empty body */
+#else	 	
 	InitializeCriticalSection(&debuglogCS);
 	debugfile = fopen("fstimesync.log","w");
 	setvbuf (debugfile, NULL, _IONBF,0);
 	debuglog(DEBUG_ALL,"Debug log opened.\n");
+#endif	
 }		
 
 int DebugShutdown(void) {
+#ifndef _DEBUG
+	/* Empty body */
+#else		
 	debuglog(DEBUG_ALL,"Debug log closed.\n"); 
 	fclose(debugfile);
 	DeleteCriticalSection(&debuglogCS); 
+#endif	
 }		
 
 unsigned long DebugGetMask(void) {

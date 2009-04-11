@@ -9,13 +9,13 @@
 
 typedef struct tagSyncOptions {
 	DWORD StartMinimized;	
-	DWORD SystemUTCOffsetState;
+	DWORD SystemUTCCorrectionState;
 	DWORD FutureSetting00;
 	DWORD AutoOnStart;	
 	DWORD AutoSyncInterval;
 	DWORD DisableAffinityFix;
 	DWORD DisablePriorityFix;
-	LONG SystemUTCOffset;	
+	LONG SystemUTCCorrection;	
 	WORD ManSyncHotkey;
 	WORD ModeSwitchHotkey;
 } SyncOptions_t;
@@ -47,5 +47,7 @@ DWORD GetRTVal(int RTVal);
 
 int HotkeysRegister(HWND hwnd, WORD ManSync, WORD OperModeSwitch);
 int HotkeysUnregister(HWND hwnd);
+
+static int AffinityPriorityFix(DWORD DisableAffinityFix, DWORD DisablePriorityFix);
 
 #endif

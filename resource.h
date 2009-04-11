@@ -18,8 +18,8 @@
 #define IDC_AUTOSYNCSTARTUP                     1007
 #define IDC_STARTMINIMIZED                      1008
 #define IDC_FUTUREOPT3	                        1009
-#define IDC_UTCOFFSET                           1011
-#define IDE_UTCOFFSET                           1012
+#define IDC_UTCCORRECTION                       1011
+#define IDE_UTCCORRECTION                       1012
 #define IDH_MANSYNCHOTKEY                       1014
 #define IDB_OK	                                1040
 #define IDB_CLOSE								1050

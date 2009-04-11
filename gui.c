@@ -258,15 +258,15 @@ static BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPAR
 					CopySettings(&PendingSettings,&Defaults);
 					GUIOptionsDraw(hwnd,&PendingSettings);
 					break;
-				case IDC_UTCOFFSET:
+				case IDC_UTCCORRECTION:
 					{
-						HWND hEUTCOffset = GetDlgItem(hwnd,IDE_UTCOFFSET);		
-						if(SendDlgItemMessage(hwnd,IDC_UTCOFFSET,BM_GETCHECK,0,0) == BST_CHECKED) {
-							EnableWindow(hEUTCOffset,TRUE);
+						HWND hEUTCCorrection = GetDlgItem(hwnd,IDE_UTCCORRECTION);		
+						if(SendDlgItemMessage(hwnd,IDC_UTCCORRECTION,BM_GETCHECK,0,0) == BST_CHECKED) {
+							EnableWindow(hEUTCCorrection,TRUE);
 						} else {
-							EnableWindow(hEUTCOffset,FALSE);
+							EnableWindow(hEUTCCorrection,FALSE);
 						}
-						CloseHandle(hEUTCOffset);
+						CloseHandle(hEUTCCorrection);
 					}
 					break;		
 				default:
@@ -585,7 +585,7 @@ static void GUIUpdate() {
 
 /* Loads the options from the structure into the dialog */
 static void GUIOptionsDraw(HWND hwnd,SyncOptions_t* Sets) {
-	HWND hEUTCOffset = GetDlgItem(hwnd,IDE_UTCOFFSET);	
+	HWND hEUTCCorrection = GetDlgItem(hwnd,IDE_UTCCORRECTION);	
 	
 	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_RESETCONTENT,0,0);
 	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"5 seconds");				
@@ -598,15 +598,14 @@ static void GUIOptionsDraw(HWND hwnd,SyncOptions_t* Sets) {
 	else
 		SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
 		
-	if(Sets->SystemUTCOffsetState) {
-		SendDlgItemMessage(hwnd,IDC_UTCOFFSET,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
-		SetDlgItemInt(hwnd,IDE_UTCOFFSET,Sets->SystemUTCOffset,TRUE);
-		EnableWindow(hEUTCOffset,TRUE);						
+	if(Sets->SystemUTCCorrectionState) {
+		SendDlgItemMessage(hwnd,IDC_UTCCORRECTION,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
+		EnableWindow(hEUTCCorrection,TRUE);						
 	} else {
-		SendDlgItemMessage(hwnd,IDC_UTCOFFSET,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);
-		SetDlgItemInt(hwnd,IDE_UTCOFFSET,Sets->SystemUTCOffset,TRUE);	
-		EnableWindow(hEUTCOffset,FALSE);		
+		SendDlgItemMessage(hwnd,IDC_UTCCORRECTION,BM_SETCHECK,(WPARAM)BST_UNCHECKED,0);	
+		EnableWindow(hEUTCCorrection,FALSE);		
 	}
+		SetDlgItemInt(hwnd,IDE_UTCCORRECTION,Sets->SystemUTCCorrection,TRUE);	
 
 	/* Reserved for future option, previously was Daylight Saving
 	if(Sets->FutureSetting)
@@ -646,7 +645,7 @@ static void GUIOptionsDraw(HWND hwnd,SyncOptions_t* Sets) {
 	SendDlgItemMessage(hwnd,IDH_MANSYNCHOTKEY,HKM_SETHOTKEY,PendingSettings.ManSyncHotkey,0);
 	SendDlgItemMessage(hwnd,IDH_OPERMODEHOTKEY,HKM_SETHOTKEY,PendingSettings.ModeSwitchHotkey,0);	
 	
-	CloseHandle(hEUTCOffset);	
+	CloseHandle(hEUTCCorrection);	
 }
 
 /* Saves the options from the dialog into the structure */
@@ -656,13 +655,12 @@ static void GUIOptionsSave(HWND hwnd,SyncOptions_t* Sets) {
 	else
 		Sets->StartMinimized = 0;
 		
-	if(SendDlgItemMessage(hwnd,IDC_UTCOFFSET,BM_GETCHECK,0,0) == BST_CHECKED) {
-		Sets->SystemUTCOffsetState = 1;
-		Sets->SystemUTCOffset = GetDlgItemInt(hwnd,IDE_UTCOFFSET,NULL,TRUE);
+	if(SendDlgItemMessage(hwnd,IDC_UTCCORRECTION,BM_GETCHECK,0,0) == BST_CHECKED) {
+		Sets->SystemUTCCorrectionState = 1;
 	} else {
-		Sets->SystemUTCOffsetState = 0;
-		Sets->SystemUTCOffset = GetDlgItemInt(hwnd,IDE_UTCOFFSET,NULL,TRUE);	
+		Sets->SystemUTCCorrectionState = 0;	
 	}
+	Sets->SystemUTCCorrection = GetDlgItemInt(hwnd,IDE_UTCCORRECTION,NULL,TRUE);
 
 	/* Reserved for future option, previously was Daylight Saving	
 	if(SendDlgItemMessage(hwnd,IDC_FUTUREOPT3,BM_GETCHECK,0,0) == BST_CHECKED)
@@ -754,3 +752,4 @@ static void GUISyncNowEvent() {
 			SetRTVal(FST_SYNCNOW,TRUE);
 	}
 }
+
