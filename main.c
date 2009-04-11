@@ -20,6 +20,10 @@ static CRITICAL_SECTION ProgramControlCS;
 /* Version info */
 Version_t Ver = {__TIME__,__DATE__,"v0.9"};
 
+/* Locals */
+DWORD ReUpdateGUI;
+DWORD SimStatusPrev;
+
 int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpszArgument, int nCmdShow) {
 	/* Mutex to prevent multiple instances of this application */
   	if (CreateMutex(NULL,FALSE,"_FSTimeSyncMutex_") && GetLastError() == ERROR_ALREADY_EXISTS) {
@@ -40,6 +44,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 	/* Set the operating mode (manual or auto) based on the setting and next sync */
  	SetRTVal(FST_AUTOMODE,Settings.AutoOnStart);
 	Stats.SyncNext = time(NULL)+Settings.AutoSyncInterval;
+	Stats.SyncInterval = Settings.AutoSyncInterval;
 	
 	/* Start the GUI Thread, based on the Start Minimized setting */
 	if(Settings.StartMinimized == 1)
@@ -53,11 +58,17 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		time_t CurrentTime;
 		struct tm* systm;
 		int nResult;
-		
+
+		if(ReUpdateGUI) {
+			ReUpdateGUI = 0;
+			/* Signal GUI thread to call GUIUpdate */
+			PostMessage(hDummyWindow,WM_USER+1,10,0);
+		}
+
 		EnterCriticalSection(&ProgramDataCS);
-		
-		CurrentTime = time(NULL); /* Saves multiple expensive calls to time() */
-		Stats.SimStatus = SyncGetConStatus(); /* Get updated state of the connection */
+
+		Stats.SimStatus = SyncGetConStatus(); /* Get updated state of the connection */		
+		CurrentTime = time(NULL); /* Saves multiple expensive calls to time() */			
 			
 		/* System UTC time */
 		systm = gmtime(&CurrentTime);
@@ -88,40 +99,44 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 				if(Stats.SyncInterval < Settings.AutoSyncInterval) {
 					Stats.SyncNext = CurrentTime+Settings.AutoSyncInterval;
 					Stats.SyncInterval = Settings.AutoSyncInterval; /* Progress bar is drawn based on current synch, not next one */
-				}	
+				}
+				/* Check if it's time to sync */
 				if(Stats.SyncNext <= CurrentTime) {
 					if(nResult = SyncGo(&Stats.SysUTCTime)) {
-						Stats.SyncLast = time(&CurrentTime); /* Sync takes time, update the time on the way */
+						Stats.SyncNext = time(&CurrentTime)+Settings.AutoSyncInterval; /* Sync takes time, update the time on the way */
+						Stats.SyncLast = CurrentTime;
 						Stats.SyncInterval = Settings.AutoSyncInterval;
 						Stats.SyncLastModified = 1;
 					} else {
-						Stats.SyncNext = CurrentTime+5;
-						Stats.SyncInterval = 5;
+						Stats.SyncNext = CurrentTime+3;
+						Stats.SyncInterval = 3;
 					}
 				}
 			} else {
 				/* Manual mode */
 				Stats.SyncInterval = 0;
 				if(GetRTVal(FST_SYNCNOW)) {
-					if(nResult = SyncGo(&Stats.SysUTCTime)) {
-						SetRTVal(FST_SYNCNOW, 0); /* Clear the event */
+					SetRTVal(FST_SYNCNOW, 0); /* Clear the event, regardless of success or failure */					
+					if(SyncGo(&Stats.SysUTCTime)) {
 						Stats.SyncLast = time(&CurrentTime);
 						Stats.SyncLastModified = 1;
 					}
-				}
+				} /* Sync now */
 			} /* Mode */
 		} else {
 			/* Connect to the sim */
 			Stats.SimStatus = SyncConnect(SIM_ANY);
+
+			if(Stats.SimStatus != SimStatusPrev)
+				ReUpdateGUI = 1; /* Force updating of the GUI */
+
 			/* Set up the affinity fix and\or the priority fix depending on settings */
 			if(Stats.SimStatus)
 				AffinityPriorityFix(Settings.DisableAffinityFix,Settings.DisablePriorityFix);
 				
-			/* Signal GUI thread to call GUIUpdate - needed for tray icon */				
-			PostMessage(hDummyWindow,WM_USER+1,10,0);
-
 		} /* SimStatus */
-			
+
+		SimStatusPrev = Stats.SimStatus;
 		Stats.UpdateElements = 1;
 			
 		LeaveCriticalSection(&ProgramDataCS);		

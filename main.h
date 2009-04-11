@@ -20,6 +20,7 @@ typedef struct tagSyncOptions {
 	WORD ModeSwitchHotkey;
 } SyncOptions_t;
 
+/* Shared stats */
 typedef struct tagSyncStats {
 	DWORD SimStatus;
 	DWORD SyncInterval; /* The interval of the current sync operation */

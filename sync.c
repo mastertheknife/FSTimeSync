@@ -23,7 +23,7 @@ int SyncDisconnect(void) {
 	
 	FSUIPC_Close();
 	SyncConStatus = 0;
-	
+
 	return 1;
 }
 
