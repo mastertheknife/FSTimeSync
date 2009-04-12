@@ -171,6 +171,68 @@ int SyncGetTime(time_t* UTCtime) {
 	return 1;
 }
 
+int SyncGetPause(DWORD* bPaused) {
+	DWORD nResult;
+	short bPausedTemp;
+		
+	if(!SyncConStatus) {
+		debuglog(DEBUG_ERROR,"Called although simulator isn't connected!\n");
+		return 0;
+	}
+	
+	if(bPaused == NULL) {
+		debuglog(DEBUG_ERROR,"NULL Pointer!\n");
+		return 0;
+	}
+	
+	if(!FSUIPC_Read(0x264,2,&bPausedTemp,&nResult)) {
+		debuglog(DEBUG_ERROR,"Failed reading pause indicator from FS, FSUIPC returned: %u\n",nResult);
+		SyncDisconnect(); /* Disconnect for now */
+		return 0;
+	}
+		
+	if(!FSUIPC_Process(&nResult)) {
+		debuglog(DEBUG_ERROR,"Failed processing pause indicator read request, FSUIPC returned: %u\n",nResult);
+		SyncDisconnect();		
+		return 0;
+	}
+	
+	*bPaused = bPausedTemp;
+	
+	return 1;
+}
+
+int SyncGetSimRate(DWORD* SimRate) {
+	DWORD nResult;
+	short SimRateTemp;
+		
+	if(!SyncConStatus) {
+		debuglog(DEBUG_ERROR,"Called although simulator isn't connected!\n");
+		return 0;
+	}
+	
+	if(SimRate == NULL) {
+		debuglog(DEBUG_ERROR,"NULL Pointer!\n");
+		return 0;
+	}
+	
+	if(!FSUIPC_Read(0xC1A,2,&SimRateTemp,&nResult)) {
+		debuglog(DEBUG_ERROR,"Failed reading simulation rate from FS, FSUIPC returned: %u\n",nResult);
+		SyncDisconnect(); /* Disconnect for now */
+		return 0;
+	}
+		
+	if(!FSUIPC_Process(&nResult)) {
+		debuglog(DEBUG_ERROR,"Failed processing simulation rate read request, FSUIPC returned: %u\n",nResult);
+		SyncDisconnect();		
+		return 0;
+	}
+	
+	*SimRate = SimRateTemp;
+	
+	return 1;
+}
+
 /*** Internal functions ***/
 /* Gets the timezone difference of the local time
    against the UTC time in the area we're flying in */

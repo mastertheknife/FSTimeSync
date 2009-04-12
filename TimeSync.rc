@@ -94,7 +94,7 @@ FONT 8, "Ms Shell Dlg 2", 0, 0, 1
     AUTOCHECKBOX    "Start minimized", IDC_STARTMINIMIZED, 5, 7, 196, 10, WS_TABSTOP | BS_AUTOCHECKBOX
     AUTOCHECKBOX    "System UTC correction (in minutes, e.g. -60)", IDC_UTCCORRECTION, 5, 20, 165, 10, WS_TABSTOP | BS_AUTOCHECKBOX
     EDITTEXT        IDE_UTCCORRECTION, 176, 19, 25, 12, WS_TABSTOP | ES_RIGHT
-    AUTOCHECKBOX    "No sync when paused", IDC_NOSYNCPAUSED, 5, 33, 196, 10, WS_TABSTOP | BS_AUTOCHECKBOX
+    AUTOCHECKBOX    "No sync when simulation is paused", IDC_NOSYNCPAUSED, 5, 33, 196, 10, WS_TABSTOP | BS_AUTOCHECKBOX
     AUTOCHECKBOX    "No sync when simulation rate is other than 1x", IDC_NOSYNCSIMRATE, 5, 46, 196, 10, WS_TABSTOP | BS_AUTOCHECKBOX    
     LTEXT           "Manual synchronization hotkey:", IDC_STATIC, 6, 63, 108, 8, SS_LEFT
     CONTROL         "", IDH_MANSYNCHOTKEY, HOTKEY_CLASS, WS_TABSTOP, 121, 61, 80, 12

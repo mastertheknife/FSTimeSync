@@ -32,6 +32,8 @@ typedef struct tagSyncStats {
 	time_t SimUTCTime;
 	time_t SysUTCTime;
 	DWORD UpdateElements;
+	DWORD SimPaused;
+	DWORD SimRate;
 } SyncStats_t;
 
 typedef struct tagRV {

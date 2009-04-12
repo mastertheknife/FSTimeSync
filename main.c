@@ -23,6 +23,9 @@ Version_t Ver = {__TIME__,__DATE__,"v0.9"};
 /* Locals */
 DWORD ReUpdateGUI;
 DWORD SimStatusPrev;
+DWORD SimPausedPrev;
+DWORD SimRatePrev;
+DWORD CancelSync;
 
 int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpszArgument, int nCmdShow) {
 	/* Mutex to prevent multiple instances of this application */
@@ -64,11 +67,14 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 			/* Signal GUI thread to call GUIUpdate */
 			PostMessage(hDummyWindow,WM_USER+1,10,0);
 		}
+		
+		if(CancelSync)
+			CancelSync = 0;
 
 		EnterCriticalSection(&ProgramDataCS);
 
-		Stats.SimStatus = SyncGetConStatus(); /* Get updated state of the connection */		
-		CurrentTime = time(NULL); /* Saves multiple expensive calls to time() */			
+		Stats.SimStatus = SyncGetConStatus(); /* Get updated state of the connection */
+		CurrentTime = time(NULL); /* Saves multiple expensive calls to time() */
 			
 		/* System UTC time */
 		systm = gmtime(&CurrentTime);
@@ -86,10 +92,34 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		if(Stats.SimStatus) {
 		
 			/* Get the simulator's UTC time */
-			SyncGetTime(&Stats.SimUTCTime);				
+			SyncGetTime(&Stats.SimUTCTime);	
+
+			/* Get the simulator's pause state (paused or not) */
+			if(Settings.NoSyncPaused) {		
+				/* Get the simulator's state (paused or not) */
+				SyncGetPause(&Stats.SimPaused);
+				if(Stats.SimPaused)
+					CancelSync = 1;	
+				if(Stats.SimPaused != SimPausedPrev)
+						ReUpdateGUI = 1;
+			}
+
+			/* Get the simulator's simulation rate (256=1) */			
+			if(Settings.NoSyncSimRate) {		
+				/* Get the simulator's simulation rate (256=1) */
+				SyncGetSimRate(&Stats.SimRate);	
+				if(Stats.SimRate != 256)
+					CancelSync = 1;
+				if(Stats.SimRate != SimRatePrev)
+					ReUpdateGUI = 1;						
+			}
 					
 			if(GetRTVal(FST_AUTOMODE)) {
-				/* Automatic mode */		
+				/* Check for no sync, e.g. paused or sim rate */
+				if(CancelSync) {
+					Stats.SyncNext = CurrentTime+Settings.AutoSyncInterval;
+					Stats.SyncInterval = Settings.AutoSyncInterval;
+				}
 				/* Check if switched to faster synch interval and there's too long to wait */
 				if((Stats.SyncNext-CurrentTime) > Settings.AutoSyncInterval) {
 					Stats.SyncNext = CurrentTime+Settings.AutoSyncInterval;
@@ -116,10 +146,12 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 				/* Manual mode */
 				Stats.SyncInterval = 0;
 				if(GetRTVal(FST_SYNCNOW)) {
-					SetRTVal(FST_SYNCNOW, 0); /* Clear the event, regardless of success or failure */					
-					if(SyncGo(&Stats.SysUTCTime)) {
-						Stats.SyncLast = time(&CurrentTime);
-						Stats.SyncLastModified = 1;
+					SetRTVal(FST_SYNCNOW, 0); /* Clear the event, regardless of success or failure */
+					if(!CancelSync) {			
+						if(SyncGo(&Stats.SysUTCTime)) {
+							Stats.SyncLast = time(&CurrentTime);
+							Stats.SyncLastModified = 1;
+						}
 					}
 				} /* Sync now */
 			} /* Mode */
@@ -136,7 +168,15 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 				
 		} /* SimStatus */
 
+		if(Settings.NoSyncPaused)
+			SimPausedPrev = Stats.SimPaused;
+
+		if(Settings.NoSyncSimRate)
+			SimRatePrev = Stats.SimRate;			
+		
 		SimStatusPrev = Stats.SimStatus;
+		
+		/* Let GUIUpdateElements() know that it can update */
 		Stats.UpdateElements = 1;
 			
 		LeaveCriticalSection(&ProgramDataCS);		

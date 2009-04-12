@@ -5,11 +5,11 @@
 #define TIMESYNC_PRIVATE_H
 
 /* VERSION DEFINITIONS */
-#define VER_STRING	"0.9.0.22"
+#define VER_STRING	"0.9.0.40"
 #define VER_MAJOR	0
 #define VER_MINOR	9
 #define VER_RELEASE	0
-#define VER_BUILD	22
+#define VER_BUILD	40
 #define COMPANY_NAME	"Kfir Itzhak (mastertheknife)"
 #define FILE_VERSION	"v0.9"
 #define FILE_DESCRIPTION	""

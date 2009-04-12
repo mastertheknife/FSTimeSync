@@ -272,13 +272,20 @@ static BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPAR
 					/* Update the hotkeys by re-registering them */
 					HotkeysRegister(hDummyWindow,PendingSettings.ManSyncHotkey,PendingSettings.ModeSwitchHotkey);					
 					
-					/* Copy settings to main settings */
-					EnterCriticalSection(&ProgramDataCS);
-					CopySettings(&Settings,&PendingSettings);
-					LeaveCriticalSection(&ProgramDataCS);
-
 					/* Save to registry */
 					RegistryWriteSettings(&PendingSettings);
+					
+					/* Lock the settings and stats for the copy and GUI update */
+					EnterCriticalSection(&ProgramDataCS);
+					
+					/* Copy settings to main settings */
+					CopySettings(&Settings,&PendingSettings);					
+					
+					/* Update the main dialog */
+					GUIUpdate(&Settings,&Stats);
+					
+					/* Release the lock */
+					LeaveCriticalSection(&ProgramDataCS);					
 
 					/* Close the options dialog */
 					EndDialog(hwnd,IDB_OK);
@@ -617,39 +624,71 @@ static void GUIUpdate(SyncOptions_t* SafeSets, SyncStats_t* SafeStats) {
 				default:					
 					SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"Running");
 					break;
-			}					
+			}
+			
+			if(GetRTVal(FST_AUTOMODE)) {
+				ShowWindow(hToSync,SW_HIDE);
+				ShowWindow(hNextSync,SW_SHOW);
+				ShowWindow(hPNextSync,SW_SHOW);	
+			} else {
+				EnableWindow(hBSync,TRUE);
+				SetDlgItemText(hMainDlg,IDT_TOSYNC,"To synchronizate the flight simulator clock, click on the\nSync Now button or the assigned hotkey (see options).");
+			}
+			
+			if(SafeSets->NoSyncSimRate) {
+				if(SafeStats->SimRate != 256) {
+					SetDlgItemText(hMainDlg,IDT_TOSYNC,"Flight Simulator simulation rate is other than 1x, synchronization is disabled (see options).");
+					EnableWindow(hBSync,FALSE);
+					ShowWindow(hPNextSync,SW_HIDE);
+					ShowWindow(hNextSync,SW_HIDE);				
+					ShowWindow(hToSync,SW_SHOW);					
+				}
+			}		
+			if(SafeSets->NoSyncPaused) {
+				if(SafeStats->SimPaused) {
+					SetDlgItemText(hMainDlg,IDT_TOSYNC,"Flight Simulator is paused, synchronization is disabled (see options).");
+					EnableWindow(hBSync,FALSE);
+					ShowWindow(hPNextSync,SW_HIDE);
+					ShowWindow(hNextSync,SW_HIDE);				
+					ShowWindow(hToSync,SW_SHOW);						
+				}
+			}
+			if(SafeSets->NoSyncPaused && SafeSets->NoSyncSimRate) {
+				if(SafeStats->SimPaused && SafeStats->SimRate != 256) {
+					SetDlgItemText(hMainDlg,IDT_TOSYNC,"Flight Simulator is paused and the simulation rate is other than 1x, synchronization is disabled (see options).");
+					EnableWindow(hBSync,FALSE);
+					ShowWindow(hPNextSync,SW_HIDE);
+					ShowWindow(hNextSync,SW_HIDE);				
+					ShowWindow(hToSync,SW_SHOW);						
+				}
+			}
+						
 		} else {
 			SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"Not Running"); 				
 			SetDlgItemText(hMainDlg,IDT_SIMUTC,"N/A");			
 			SetDlgItemText(hMainDlg,IDT_SYNCSTATUS,"N/A");
 			SetDlgItemText(hMainDlg,IDT_TOSYNC,"No simulator detected running. Please start your Microsoft Flight Simulator 98\\2000\\2002\\2004\\FS X.\n");
-		}		
-	
-		if(GetRTVal(FST_AUTOMODE)) {
-			if(SafeStats->SimStatus) {
-				ShowWindow(hToSync,SW_HIDE);
-				ShowWindow(hNextSync,SW_SHOW);
-				ShowWindow(hPNextSync,SW_SHOW);		
-			} else {
+
+			if(GetRTVal(FST_AUTOMODE)){
 				ShowWindow(hPNextSync,SW_HIDE);
 				ShowWindow(hNextSync,SW_HIDE);				
 				ShowWindow(hToSync,SW_SHOW);
-			}	
+			} else {
+				EnableWindow(hBSync,FALSE);
+			}
+
+		} /* SimStatus */	
+	
+		if(GetRTVal(FST_AUTOMODE)) {
 			EnableWindow(hBSync,FALSE);							
 			ShowWindow(hTNoManual,SW_SHOW);			
 			SetDlgItemText(hMainDlg,IDB_MODE,"Manual Mode");	
 			SetDlgItemText(hMainDlg,IDT_OPERMODE,"Automatic");										
 		} else {
-			if(SafeStats->SimStatus) {
-				EnableWindow(hBSync,TRUE);
-				SetDlgItemText(hMainDlg,IDT_TOSYNC,"To synchronizate the flight simulator clock, click on the\nSync Now button or the assigned hotkey (see options).");
-			} else {
-				EnableWindow(hBSync,FALSE);
-			}
-			ShowWindow(hPNextSync,SW_HIDE);		
-			ShowWindow(hNextSync,SW_HIDE);		
-			ShowWindow(hTNoManual,SW_HIDE);		
-			ShowWindow(hToSync,SW_SHOW);																
+			ShowWindow(hPNextSync,SW_HIDE);	
+			ShowWindow(hNextSync,SW_HIDE);	
+			ShowWindow(hTNoManual,SW_HIDE);
+			ShowWindow(hToSync,SW_SHOW);														
 			SetDlgItemText(hMainDlg,IDB_MODE,"Automatic Mode");	
 			SetDlgItemText(hMainDlg,IDT_OPERMODE,"Manual");
 		}
@@ -671,6 +710,8 @@ static void GUIUpdate(SyncOptions_t* SafeSets, SyncStats_t* SafeStats) {
 /* Thread safe - doesn't care about the lock */	
 static void GUITrayUpdate(SyncOptions_t* SafeSets, SyncStats_t* SafeStats) {
 	char* statusstr;
+	char* mins;
+	DWORD dwInt;
 	
 	if(SafeStats->SimStatus) {
 		TrayIconData.hIcon = hIcon;
@@ -680,10 +721,20 @@ static void GUITrayUpdate(SyncOptions_t* SafeSets, SyncStats_t* SafeStats) {
 		statusstr = "Not Running";
 	}
 		
-	if(GetRTVal(FST_AUTOMODE))
-		sprintf(TrayIconData.szTip,"FS Time Sync %s\nStatus: %s\nMode: Automatic\nInterval: %u seconds",Ver.VersionString,statusstr,SafeSets->AutoSyncInterval);
-	else
+	if(GetRTVal(FST_AUTOMODE)) {
+		if(Settings.AutoSyncInterval >= 60) {
+			dwInt = floor(((double)Settings.AutoSyncInterval)/60);
+			if(dwInt > 1)
+				mins = "minutes";
+			else
+				mins = "minute";
+			sprintf(TrayIconData.szTip,"FS Time Sync %s\nStatus: %s\nMode: Automatic\nInterval: %u %s",Ver.VersionString,statusstr,dwInt,mins);
+		} else {
+			sprintf(TrayIconData.szTip,"FS Time Sync %s\nStatus: %s\nMode: Automatic\nInterval: %u seconds",Ver.VersionString,statusstr,SafeSets->AutoSyncInterval);
+		}				
+	} else {
 		sprintf(TrayIconData.szTip,"FS Time Sync %s\nStatus: %s\nMode: Manual",Ver.VersionString,statusstr);
+	}
 		
 	/* Only modify the tray icon if it exists. */
 	if(TrayIconState == 1) {
