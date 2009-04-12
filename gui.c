@@ -174,9 +174,12 @@ static BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 			break;
 		case WM_TIMER:
 			/* Updates the main window elements, such as time and sync status */
+			/* Only updates the elements if the main loop finished another cycle */			
 			/* Lock for the settings and stats */
 			EnterCriticalSection(&ProgramDataCS);
-			GUIElementsUpdate(&Settings,&Stats);			
+			if(Stats.UpdateElements)
+				GUIElementsUpdate(&Settings,&Stats);
+				Stats.UpdateElements = 0; /* No need to re-update the elements if nothing has changed */							
 			LeaveCriticalSection(&ProgramDataCS);			
 			break;
 		case WM_COMMAND:
@@ -526,42 +529,39 @@ static void GUIElementsUpdate(SyncOptions_t* SafeSets, SyncStats_t* SafeStats) {
 	DWORD dwInt3;
 	int TimePercent;
 
-	/* Only update the elements if the main loop finished another cycle */
-	if(SafeStats->UpdateElements) {
-		/* System UTC Time */
-		lpstr = ctime(&SafeStats->SysUTCTime);
-		SetDlgItemText(hMainDlg,IDT_SYSUTC,lpstr);		
-	
-		if(SafeStats->SyncLastModified) {
-			sprintf(StrBuff,"Last synchronizated in %s",ctime(&SafeStats->SyncLast));
-			SetDlgItemText(hMainDlg,IDT_LASTSYNC,StrBuff);
-			SafeStats->SyncLastModified = 0;
-		}
-	
+	/* System UTC Time */
+	lpstr = ctime(&SafeStats->SysUTCTime);
+	SetDlgItemText(hMainDlg,IDT_SYSUTC,lpstr);		
+
+	if(SafeStats->SyncLastModified) {
+		sprintf(StrBuff,"Last synchronizated in %s",ctime(&SafeStats->SyncLast));
+		SetDlgItemText(hMainDlg,IDT_LASTSYNC,StrBuff);
+		SafeStats->SyncLastModified = 0;
+	}
+
+	/* Sync status */
+	if(SafeStats->SimStatus) {
+		/* FS UTC Time */	
+		lpstr = ctime(&SafeStats->SimUTCTime);	
+		SetDlgItemText(hMainDlg,IDT_SIMUTC,lpstr);
+
 		/* Sync status */
-		if(SafeStats->SimStatus) {
-			/* FS UTC Time */	
-			lpstr = ctime(&SafeStats->SimUTCTime);	
-			SetDlgItemText(hMainDlg,IDT_SIMUTC,lpstr);
-			
-			/* Sync status */
-			if(SafeStats->SimUTCTime > SafeStats->SysUTCTime)
-				TimePercent = SafeStats->SimUTCTime - SafeStats->SysUTCTime;
-			else
-				TimePercent = SafeStats->SysUTCTime - SafeStats->SimUTCTime;
-			TimePercent = 600 - TimePercent;
-			if(TimePercent > 600)
-				TimePercent = 600;
-			if(TimePercent < 0)
-				TimePercent = 0;
-			dwInt = floor(((((double)TimePercent) / ((double)600))* 100)+0.5);
-			if(dwInt > 100)
-				dwInt = 100;
-			if(dwInt < 0)
-				dwInt = 0;
-			sprintf(StrBuff,"%u%%",dwInt);
-			SetDlgItemText(hMainDlg,IDT_SYNCSTATUS,StrBuff);
-		}
+		if(SafeStats->SimUTCTime > SafeStats->SysUTCTime)
+			TimePercent = SafeStats->SimUTCTime - SafeStats->SysUTCTime;
+		else
+			TimePercent = SafeStats->SysUTCTime - SafeStats->SimUTCTime;
+		TimePercent = 600 - TimePercent;
+		if(TimePercent > 600)
+			TimePercent = 600;
+		if(TimePercent < 0)
+			TimePercent = 0;
+		dwInt = floor(((((double)TimePercent) / ((double)600))* 100)+0.5);
+		if(dwInt > 100)
+			dwInt = 100;
+		if(dwInt < 0)
+			dwInt = 0;
+		sprintf(StrBuff,"%u%%",dwInt);
+		SetDlgItemText(hMainDlg,IDT_SYNCSTATUS,StrBuff);
 	}
 	
 	if(GetRTVal(FST_AUTOMODE)) {
@@ -586,7 +586,6 @@ static void GUIElementsUpdate(SyncOptions_t* SafeSets, SyncStats_t* SafeStats) {
 			SendDlgItemMessage(hMainDlg,IDP_NEXTSYNC, PBM_SETPOS, (WPARAM)dwInt, 0); 
 		}
 	}
-	SafeStats->UpdateElements = 0; /* No need to re-update the elements if nothing has changed */
 
 }	
 
