@@ -33,19 +33,19 @@ CompilerSettings=00000000010100000001b0
 Major=0
 Minor=9
 Release=0
-Build=44
+Build=49
 LanguageID=1033
 CharsetID=1252
 CompanyName=Kfir Itzhak (mastertheknife)
 FileVersion=v0.9
-FileDescription=
+FileDescription=FS Time Sync
 InternalName=TimeSync.exe
-LegalCopyright=
+LegalCopyright=Copyright 2009-2010 mastertheknife
 LegalTrademarks=
 OriginalFilename=TimeSync.exe
 ProductName=FS Time Sync
 ProductVersion=v0.9
-AutoIncBuildNr=1
+AutoIncBuildNr=0
 
 [Unit1]
 FileName=main.c

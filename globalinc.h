@@ -1,6 +1,8 @@
 #ifndef _FST_GLOBALINC_H_INC_
 #define _FST_GLOBALINC_H_INC_
 
+#define _DEBUG
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -16,7 +18,5 @@
 #ifndef false
 #define false 0
 #endif
-
-#define _DEBUG
 
 #endif

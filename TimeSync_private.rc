@@ -9,8 +9,8 @@
 // TO CHANGE VERSION INFORMATION, EDIT PROJECT OPTIONS...
 //
 1 VERSIONINFO
-FILEVERSION 0,9,0,44
-PRODUCTVERSION 0,9,0,44
+FILEVERSION 0,9,0,49
+PRODUCTVERSION 0,9,0,49
 FILETYPE VFT_APP
 {
   BLOCK "StringFileInfo"
@@ -19,9 +19,9 @@ FILETYPE VFT_APP
 		 {
 			 VALUE "CompanyName", "Kfir Itzhak (mastertheknife)"
 			 VALUE "FileVersion", "v0.9"
-			 VALUE "FileDescription", ""
+			 VALUE "FileDescription", "FS Time Sync"
 			 VALUE "InternalName", "TimeSync.exe"
-			 VALUE "LegalCopyright", ""
+			 VALUE "LegalCopyright", "Copyright 2009-2010 mastertheknife"
 			 VALUE "LegalTrademarks", ""
 			 VALUE "OriginalFilename", "TimeSync.exe"
 			 VALUE "ProductName", "FS Time Sync"

@@ -20,10 +20,15 @@
 extern "C" {
 #endif /* C++ */
 
+
+#ifdef _DEBUG
 /* __func__ is a C99 feature */
 /* and VA ARGS doesnt work with every compiler. */
 /* Thread safe - doesn't care about the lock */	
 #define debuglog(level, format, ...) DebugWrite(__FILE__, __func__ , GetCurrentThreadId(), level, format, ## __VA_ARGS__)
+#else
+#define debuglog (void)
+#endif
 
 int DebugStartup(void); 			/* Initalizes the debug module.		*/
 int DebugShutdown(void); 			/* Shuts down the debug module.		*/
