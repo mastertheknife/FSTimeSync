@@ -11,7 +11,7 @@
 
 /* Globals */
 SyncOptions_t Settings;
-SyncOptions_t Defaults = {0,0,0,1,10,0,0,0,1,0,MAKEWORD(0x53,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(0x4D,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* Default options */
+SyncOptions_t Defaults = {0,0,0,1,10,0,0,1,1,0,MAKEWORD(0x53,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(0x4D,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* Default options */
 SyncStats_t Stats;
 CRITICAL_SECTION ProgramDataCS;
 static RuntimeVals_t RuntimeVals;
@@ -34,11 +34,12 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		return 100;
 	}
 
-	/* Initialize the critical sections and perform startup */
+	/* Initialize the critical sections and perform indepenedant modules startup */
 	InitializeCriticalSection(&ProgramDataCS);
 	InitializeCriticalSection(&ProgramControlCS);
 	DebugStartup();
 	RegistryStartup();
+	SyncStartup();
  	GUIStartup();
 
 	/* Load the settings from the registry */
@@ -197,6 +198,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 	DeleteCriticalSection(&ProgramDataCS);
 	DeleteCriticalSection(&ProgramControlCS);
 	GUIShutdown();
+	SyncShutdown();
     RegistryShutdown();
     DebugShutdown();
 

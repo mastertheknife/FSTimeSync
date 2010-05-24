@@ -26,5 +26,8 @@ int SyncGo(time_t* UTCtime);
 int SyncGetTime(time_t* UTCtime);
 int SyncGetPause(DWORD* bPaused);
 int SyncGetSimRate(DWORD* SimRate);
+int SyncStartup();
+int SyncShutdown();
 static int SyncGetSimUTCLocalDifference(int* ZoneDifference);
+
 #endif

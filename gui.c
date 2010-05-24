@@ -334,7 +334,7 @@ static BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM
 				sprintf(StrBuff,"FS Time Sync %s",Ver.VersionString);
 				SetDlgItemText(hwnd,IDT_ABOUTL1,StrBuff);
 				SetDlgItemText(hwnd,IDT_ABOUTL2,"by mastertheknife");
-				sprintf(StrBuff,"%s %s",Ver.compiledate,Ver.compiletime);
+				sprintf(StrBuff,"%s %s",Ver.CompileDate,Ver.CompileTime);
 				SetDlgItemText(hwnd,IDT_ABOUTL3,StrBuff);
 				ShowWindow(hwnd,SW_SHOW);
 			}

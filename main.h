@@ -43,8 +43,8 @@ typedef struct tagRV {
 } RuntimeVals_t;
 
 typedef struct tagVersion {
-	char* compiletime;
-	char* compiledate;
+	char* CompileTime;
+	char* CompileDate;
 	char* VersionString;
 } Version_t;
 

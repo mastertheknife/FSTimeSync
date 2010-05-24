@@ -233,6 +233,16 @@ int SyncGetSimRate(DWORD* SimRate) {
 	return 1;
 }
 
+int SyncStartup() {
+	SyncConStatus = 0;
+	return 1;
+}
+
+int SyncShutdown() {
+	SyncConStatus = 0;
+	return 1;
+}
+
 /*** Internal functions ***/
 /* Gets the timezone difference of the local time
    against the UTC time in the area we're flying in */
