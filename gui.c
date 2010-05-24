@@ -618,7 +618,7 @@ static void GUIUpdate(SyncOptions_t* SafeSets, SyncStats_t* SafeStats) {
 					SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"FS2004 Running");
 					break;
 				case SIM_FSX:
-					SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"FS X Running");
+					SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"FS X Running (Experimental)");
 					break;
 				default:					
 					SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"Running");
@@ -666,7 +666,7 @@ static void GUIUpdate(SyncOptions_t* SafeSets, SyncStats_t* SafeStats) {
 			SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"Not Running"); 				
 			SetDlgItemText(hMainDlg,IDT_SIMUTC,"N/A");			
 			SetDlgItemText(hMainDlg,IDT_SYNCSTATUS,"N/A");
-			SetDlgItemText(hMainDlg,IDT_TOSYNC,"No simulator detected running. Please start your Microsoft Flight Simulator 98\\2000\\2002\\2004\\FS X.\n");
+			SetDlgItemText(hMainDlg,IDT_TOSYNC,"No simulator detected running. Please start Microsoft Flight Simulator 98\\2000\\2002\\2004\\FS X.\n");
 
 			if(GetRTVal(FST_AUTOMODE)){
 				ShowWindow(hPNextSync,SW_HIDE);

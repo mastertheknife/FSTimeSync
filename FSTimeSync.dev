@@ -1,13 +1,13 @@
 [Project]
-FileName=TimeSync.dev
-Name=TimeSync
+FileName=FSTimeSync.dev
+Name=FSTimeSync
 UnitCount=13
 Type=0
 Ver=1
 ObjFiles=
 Includes=
 Libs=
-PrivateResource=TimeSync_private.rc
+PrivateResource=FSTimeSync_private.rc
 ResourceIncludes=
 MakeIncludes=
 Compiler=
@@ -18,7 +18,7 @@ Icon=
 ExeOutput=
 ObjectOutput=
 OverrideOutput=0
-OverrideOutputName=TimeSync.exe
+OverrideOutputName=FSTimeSync.exe
 HostApplication=
 Folders=
 CommandLine=
@@ -27,30 +27,30 @@ CustomMakefile=
 IncludeVersionInfo=1
 SupportXPThemes=0
 CompilerSet=0
-CompilerSettings=00000000010100000001b0
+CompilerSettings=0000000001010000000100
 
 [VersionInfo]
-Major=0
-Minor=9
+Major=1
+Minor=0
 Release=0
-Build=49
+Build=0
 LanguageID=1033
 CharsetID=1252
 CompanyName=Kfir Itzhak (mastertheknife)
-FileVersion=v0.9
+FileVersion=v1.0
 FileDescription=FS Time Sync
-InternalName=TimeSync.exe
+InternalName=FSTimeSync.exe
 LegalCopyright=Copyright 2009-2010 mastertheknife
 LegalTrademarks=
-OriginalFilename=TimeSync.exe
+OriginalFilename=FSTimeSync.exe
 ProductName=FS Time Sync
-ProductVersion=v0.9
+ProductVersion=v1.0
 AutoIncBuildNr=0
 
 [Unit1]
 FileName=main.c
 CompileCpp=0
-Folder=TimeSync
+Folder=FSTimeSync
 Compile=1
 Link=1
 Priority=1000
@@ -58,8 +58,8 @@ OverrideBuildCmd=0
 BuildCmd=
 
 [Unit2]
-FileName=TimeSync.rc
-Folder=TimeSync
+FileName=FSTimeSync.rc
+Folder=FSTimeSync
 Compile=1
 Link=0
 Priority=1000
@@ -69,7 +69,7 @@ BuildCmd=
 [Unit3]
 FileName=resource.h
 CompileCpp=0
-Folder=TimeSync
+Folder=FSTimeSync
 Compile=1
 Link=1
 Priority=1000
@@ -149,7 +149,7 @@ BuildCmd=
 [Unit11]
 FileName=debug.h
 CompileCpp=0
-Folder=TimeSync
+Folder=FSTimeSync
 Compile=1
 Link=1
 Priority=1000
@@ -159,7 +159,7 @@ BuildCmd=
 [Unit12]
 FileName=debug.c
 CompileCpp=0
-Folder=TimeSync
+Folder=FSTimeSync
 Compile=1
 Link=1
 Priority=1000
@@ -169,7 +169,7 @@ BuildCmd=
 [Unit13]
 FileName=globalinc.h
 CompileCpp=0
-Folder=TimeSync
+Folder=FSTimeSync
 Compile=1
 Link=1
 Priority=1000

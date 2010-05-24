@@ -1,7 +1,7 @@
 #ifndef _FST_GLOBALINC_H_INC_
 #define _FST_GLOBALINC_H_INC_
 
-#define _DEBUG
+// #define _DEBUG
 
 #include <stdlib.h>
 #include <stdio.h>
