@@ -51,7 +51,7 @@ int SyncGetConStatus(void) {
 
 /* Syncs the simulator UTC time from the specified UTC time,
   takes care of updating local time as well by getting the timezone difference */
-int SyncGo(time_t* UTCtime) {
+int SyncGo(time_t UTCtime, DWORD FSXNoSyncLocalTime) {
 	DWORD nResult;
 	int TimeDifference = 0;
 	FSTime_t FSTime;
@@ -65,20 +65,7 @@ int SyncGo(time_t* UTCtime) {
 		return 0;
 	}
 	
-	if(UTCtime == NULL) {
-		debuglog(DEBUG_ERROR,"NULL Pointer!\n");
-		return 0;
-	}
-	
-	/* Get the UTC<->Local time time difference, e.g. if we're flying over israel (GMT+2)
-	   Time difference would be 120 minutes (from UTC). */
-	if(!SyncGetSimUTCLocalDifference(&TimeDifference)) {
-		debuglog(DEBUG_ERROR,"Failed getting timezone difference\n");
-		SyncDisconnect();	
-		return 0;
-	}
-	
-	ptm = localtime(UTCtime);
+	ptm = localtime(&UTCtime);
 	if(ptm == NULL) {
 		debuglog(DEBUG_ERROR,"localtime() failed on given time\n");
 		return 0;
@@ -89,29 +76,54 @@ int SyncGo(time_t* UTCtime) {
 	FSTime.UTCMinute = ptm->tm_min;
 	FSTime.Second = ptm->tm_sec;
 	FSDate.Day = ptm->tm_yday + 1;
-	FSDate.Year = ptm->tm_year + 1900;
-
-	/* Need to warp the hour to keep it within 00 to 23 and minutes within 00 to 59 */
-	WrapHour = (int)(floor((double)TimeDifference / 60)) + FSTime.UTCHour;
-	if(WrapHour < 0)
-		WrapHour = 24 - abs(WrapHour);
-	if(WrapHour >= 24)
-		WrapHour %= 24;
-	WrapMinute = TimeDifference%60 + FSTime.UTCMinute;
-	if(WrapMinute < 0)
-		WrapMinute = 60 - abs(WrapMinute);
-	if(WrapMinute >= 60)
-		WrapMinute %= 60;
-
-	/* Set up the local time */
-	FSTime.LocalHour = WrapHour;		
-	FSTime.LocalMinute = WrapMinute;	
+	FSDate.Year = ptm->tm_year + 1900;		
 	
-	if(!FSUIPC_Write(0x238,5,&FSTime,&nResult)) {
-		debuglog(DEBUG_ERROR,"Failed writing time data to FS, FSUIPC returned: %u\n",nResult);
-		SyncDisconnect(); /* Disconnect for now */
-		return 0;
-	}
+	/* For FS2004 and probably earlier versions, updating the UTC time doesn't update the local time
+	So what i did was get UTC time difference from local time of the area we'e flying in and calculate local time from that
+	But it seems this is not needed for FS X. */ 
+	if(SyncGetSimVersion() != SIM_FSX && !FSXNoSyncLocalTime) {
+	debuglog(DEBUG_CAPTURE,"Not skipping local time updating for FS X\n");
+		
+		/* Get the UTC<->Local time time difference, e.g. if we're flying over israel (GMT+2)
+	    Time difference would be 120 minutes (from UTC). */
+		if(!SyncGetSimUTCLocalDifference(&TimeDifference)) {
+			debuglog(DEBUG_ERROR,"Failed getting timezone difference\n");
+			SyncDisconnect();	
+			return 0;
+		}
+
+		/* Need to warp the hour to keep it within 00 to 23 and minutes within 00 to 59 */
+		WrapHour = (int)(floor((double)TimeDifference / 60)) + FSTime.UTCHour;
+		if(WrapHour < 0)
+			WrapHour = 24 - abs(WrapHour);
+		if(WrapHour >= 24)
+			WrapHour %= 24;
+		WrapMinute = TimeDifference%60 + FSTime.UTCMinute;
+		if(WrapMinute < 0)
+			WrapMinute = 60 - abs(WrapMinute);
+		if(WrapMinute >= 60)
+			WrapMinute %= 60;
+
+		/* Set up the local time */
+		FSTime.LocalHour = WrapHour;		
+		FSTime.LocalMinute = WrapMinute;
+	
+		if(!FSUIPC_Write(0x238,5,&FSTime,&nResult)) {
+			debuglog(DEBUG_ERROR,"Failed writing time data including local time to FS, FSUIPC returned: %u\n",nResult);
+			SyncDisconnect(); /* Disconnect for now */
+			return 0;
+		}
+	
+	/* Skipping local time, this means we only write 3 bytes instead of 5 bytes. */	
+	} else {
+		debuglog(DEBUG_CAPTURE,"Skipping local time updating for FS X\n");		
+		
+		if(!FSUIPC_Write(0x238,3,&FSTime,&nResult)) {
+			debuglog(DEBUG_ERROR,"Failed writing time data excluding local time to FS, FSUIPC returned: %u\n",nResult);
+			SyncDisconnect(); /* Disconnect for now */
+			return 0;
+		}
+	} /* End of local time check */
 	
 	if(!FSUIPC_Write(0x23E,4,&FSDate,&nResult)) {
 		debuglog(DEBUG_ERROR,"Failed writing date data to FS, FSUIPC returned: %u\n",nResult);
@@ -128,31 +140,27 @@ int SyncGo(time_t* UTCtime) {
 	return 1;
 }
 
-/* Gets the simulator UTC time */
-int SyncGetTime(time_t* UTCtime) {
-	DWORD nResult;
-	FSTime_t FSTime;
-	FSDate_t FSDate;
-	struct tm fstm;
-	time_t Temptime;	
+/* Gets the simulator UTC time in structures */
+int SyncGetFSTimeDate(FSTime_t* TimeDest, FSDate_t* DateDest) {
+	DWORD nResult;	
 
 	if(!SyncConStatus) {
 		debuglog(DEBUG_ERROR,"Called although simulator isn't connected!\n");
 		return 0;
 	}
 	
-	if(UTCtime == NULL) {
+	if(TimeDest == NULL || DateDest == NULL) {
 		debuglog(DEBUG_ERROR,"NULL Pointer!\n");
 		return 0;
 	}
 
-	if(!FSUIPC_Read(0x238,5,&FSTime,&nResult)) {
+	if(!FSUIPC_Read(0x238,5,TimeDest,&nResult)) {
 		debuglog(DEBUG_ERROR,"Failed reading time data from FS, FSUIPC returned: %u\n",nResult);
 		SyncDisconnect(); /* Disconnect for now */
 		return 0;
 	}
 	
-	if(!FSUIPC_Read(0x23E,4,&FSDate,&nResult)) {
+	if(!FSUIPC_Read(0x23E,4,DateDest,&nResult)) {
 		debuglog(DEBUG_ERROR,"Failed reading date data from FS, FSUIPC returned: %u\n",nResult);
 		SyncDisconnect();		
 		return 0;
@@ -161,6 +169,32 @@ int SyncGetTime(time_t* UTCtime) {
 	if(!FSUIPC_Process(&nResult)) {
 		debuglog(DEBUG_ERROR,"Failed processing read time and date requests, FSUIPC returned: %u\n",nResult);
 		SyncDisconnect();		
+		return 0;
+	}
+	
+	return 1;
+}
+
+
+/* Gets the simulator UTC time as a unix timestamp */
+int SyncGetFSTimestamp(time_t* UTCtime) {
+	FSTime_t FSTime;
+	FSDate_t FSDate;
+	struct tm fstm;
+	time_t Temptime;	
+
+	if(UTCtime == NULL) {
+		debuglog(DEBUG_ERROR,"NULL Pointer!\n");
+		return 0;
+	}
+
+	if(!SyncConStatus) {
+		debuglog(DEBUG_ERROR,"Called although simulator isn't connected!\n");
+		return 0;
+	}
+	
+	if(!SyncGetFSTimeDate(&FSTime,&FSDate)) {
+		debuglog(DEBUG_ERROR,"SyncGetFSTimeDate returned 0\n");
 		return 0;
 	}
 	
@@ -294,3 +328,11 @@ static int SyncGetSimUTCLocalDifference(int* ZoneDifference) {
 	return 1;
 }
 
+int SyncGetSimVersion() {
+	if(!SyncConStatus) {
+		debuglog(DEBUG_ERROR,"Called although simulator isn't connected!\n");
+		return 0;
+	}
+	
+	return FSUIPC_FS_Version;
+}

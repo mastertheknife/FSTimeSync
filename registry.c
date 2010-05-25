@@ -43,7 +43,7 @@ int RegistryReadSettings(SyncOptions_t* ReadSettings) {
 	DWORD dwSize = sizeof(DWORD);
 	DWORD dwTemp; /* Used for convert the DWORDs to WORDs of the hotkeys */
 	
-	if(RegOpenKeyEx(HKEY_CURRENT_USER,"Software\\mastertheknife\\FS Time Sync",0,KEY_READ,&hRegKey) != ERROR_SUCCESS) {
+	if(RegOpenKeyEx(HKEY_CURRENT_USER,"Software\\FSTimeSync",0,KEY_READ,&hRegKey) != ERROR_SUCCESS) {
 		debuglog(DEBUG_WARNING,"Failed opening registry key for reading.\n");
 		ReadSettings->StartMinimized = Defaults.StartMinimized;
 		ReadSettings->SystemUTCCorrectionState = Defaults.SystemUTCCorrectionState;
@@ -52,10 +52,12 @@ int RegistryReadSettings(SyncOptions_t* ReadSettings) {
 		ReadSettings->NoSyncSimRate = Defaults.NoSyncSimRate;
 		ReadSettings->AutoOnStart = Defaults.AutoOnStart;	
 		ReadSettings->AutoSyncInterval = Defaults.AutoSyncInterval;
-		ReadSettings->DisableAffinityFix = Defaults.DisableAffinityFix;
-		ReadSettings->DisablePriorityFix = Defaults.DisablePriorityFix;
+		ReadSettings->EnableAffinityFix = Defaults.EnableAffinityFix;
+		ReadSettings->EnablePriorityFix = Defaults.EnablePriorityFix;
 		ReadSettings->ManSyncHotkey = Defaults.ManSyncHotkey;
 		ReadSettings->ModeSwitchHotkey = Defaults.ModeSwitchHotkey;
+		ReadSettings->FSXNoSyncLocalTime = Defaults.FSXNoSyncLocalTime;
+		ReadSettings->FSXUseFSSeconds = Defaults.FSXUseFSSeconds;
 		return 0;
 	}				
 	
@@ -108,13 +110,21 @@ int RegistryReadSettings(SyncOptions_t* ReadSettings) {
 		ReadSettings->AutoSyncInterval = Defaults.AutoSyncInterval;
 	}
 	
-	if((nRegResult = RegQueryValueEx(hRegKey,"DisableAffinityFix",0,NULL,(LPVOID)&(ReadSettings->DisableAffinityFix),&dwSize)) != ERROR_SUCCESS) {
-		ReadSettings->DisableAffinityFix = Defaults.DisableAffinityFix;
+	if((nRegResult = RegQueryValueEx(hRegKey,"EnableAffinityFix",0,NULL,(LPVOID)&(ReadSettings->EnableAffinityFix),&dwSize)) != ERROR_SUCCESS) {
+		ReadSettings->EnableAffinityFix = Defaults.EnableAffinityFix;
 	}
 	
-	if((nRegResult = RegQueryValueEx(hRegKey,"DisablePriorityFix",0,NULL,(LPVOID)&(ReadSettings->DisablePriorityFix),&dwSize)) != ERROR_SUCCESS) {
-		ReadSettings->DisablePriorityFix = Defaults.DisablePriorityFix;
+	if((nRegResult = RegQueryValueEx(hRegKey,"EnablePriorityFix",0,NULL,(LPVOID)&(ReadSettings->EnablePriorityFix),&dwSize)) != ERROR_SUCCESS) {
+		ReadSettings->EnablePriorityFix = Defaults.EnablePriorityFix;
 	}		
+
+	if((nRegResult = RegQueryValueEx(hRegKey,"FSXNoSyncLocalTime",0,NULL,(LPVOID)&(ReadSettings->FSXNoSyncLocalTime),&dwSize)) != ERROR_SUCCESS) {
+		ReadSettings->FSXNoSyncLocalTime = Defaults.FSXNoSyncLocalTime;
+	}
+
+	if((nRegResult = RegQueryValueEx(hRegKey,"FSXUseFSSeconds",0,NULL,(LPVOID)&(ReadSettings->FSXUseFSSeconds),&dwSize)) != ERROR_SUCCESS) {
+		ReadSettings->FSXUseFSSeconds = Defaults.FSXUseFSSeconds;
+	}
 	
 	if((nRegResult = RegQueryValueEx(hRegKey,"ManSyncHotkey",0,NULL,(LPVOID)&dwTemp,&dwSize)) != ERROR_SUCCESS) {
 		if(nRegResult != ERROR_FILE_NOT_FOUND)
@@ -145,7 +155,7 @@ int RegistryWriteSettings(SyncOptions_t* WriteSettings) {
 	HKEY hRegKey = NULL;	
 	DWORD dwTemp; /* Used for convert the WORDs to DWORDs of the hotkeys */
 		
-	if(RegCreateKeyEx(HKEY_CURRENT_USER,"Software\\mastertheknife\\FS Time Sync",0,NULL,0,KEY_WRITE,NULL,&hRegKey,NULL) != ERROR_SUCCESS) {
+	if(RegCreateKeyEx(HKEY_CURRENT_USER,"Software\\FSTimeSync",0,NULL,0,KEY_WRITE,NULL,&hRegKey,NULL) != ERROR_SUCCESS) {
 		debuglog(DEBUG_WARNING,"Failed opening or creating registry key for writing\n");
 		return 0;
 	}
@@ -176,6 +186,22 @@ int RegistryWriteSettings(SyncOptions_t* WriteSettings) {
 	
 	if(RegSetValueEx(hRegKey,"AutoSyncInterval",0,REG_DWORD,(LPVOID)&(WriteSettings->AutoSyncInterval),sizeof(DWORD)) != ERROR_SUCCESS) {
 		debuglog(DEBUG_WARNING,"Failed writing AutoSyncInterval registry value.\n");		
+	}
+	
+	if(RegSetValueEx(hRegKey,"EnablePriorityFix",0,REG_DWORD,(LPVOID)&(WriteSettings->EnablePriorityFix),sizeof(DWORD)) != ERROR_SUCCESS) {
+		debuglog(DEBUG_WARNING,"Failed writing EnablePriorityFix registry value.\n");		
+	}
+	
+	if(RegSetValueEx(hRegKey,"EnableAffinityFix",0,REG_DWORD,(LPVOID)&(WriteSettings->EnableAffinityFix),sizeof(DWORD)) != ERROR_SUCCESS) {
+		debuglog(DEBUG_WARNING,"Failed writing EnableAffinityFix registry value.\n");		
+	}		
+
+	if(RegSetValueEx(hRegKey,"FSXNoSyncLocalTime",0,REG_DWORD,(LPVOID)&(WriteSettings->FSXNoSyncLocalTime),sizeof(DWORD)) != ERROR_SUCCESS) {
+		debuglog(DEBUG_WARNING,"Failed writing FSXNoSyncLocalTime registry value.\n");		
+	}
+
+	if(RegSetValueEx(hRegKey,"FSXUseFSSeconds",0,REG_DWORD,(LPVOID)&(WriteSettings->FSXUseFSSeconds),sizeof(DWORD)) != ERROR_SUCCESS) {
+		debuglog(DEBUG_WARNING,"Failed writing FSXUseFSSeconds registry value.\n");		
 	}
 	
 	dwTemp = WriteSettings->ManSyncHotkey;	

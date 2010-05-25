@@ -28,7 +28,7 @@
 
 /* Globals */
 SyncOptions_t Settings;
-SyncOptions_t Defaults = {0,0,0,1,10,1,1,1,1,0,MAKEWORD(0x53,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(0x4D,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* Default options */
+SyncOptions_t Defaults = {0,0,1,1,1,10,0,0,1,1,0,MAKEWORD(0x53,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(0x4D,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* Default options */
 SyncStats_t Stats;
 CRITICAL_SECTION ProgramDataCS;
 static RuntimeVals_t RuntimeVals;
@@ -38,11 +38,11 @@ static CRITICAL_SECTION ProgramControlCS;
 Version_t Ver = {__TIME__,__DATE__,"v1.0"};
 
 /* Locals */
-DWORD ReUpdateGUI;
-DWORD SimStatusPrev;
-DWORD SimPausedPrev;
-DWORD SimRatePrev;
-DWORD CancelSync;
+static DWORD ReUpdateGUI;
+static DWORD SimStatusPrev;
+static DWORD SimPausedPrev;
+static DWORD SimRatePrev;
+static DWORD CancelSync;
 
 int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpszArgument, int nCmdShow) {
 	/* Mutex to prevent multiple instances of this application */
@@ -79,6 +79,9 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		time_t CurrentTime;
 		struct tm* systm;
 		int nResult;
+		FSTime_t TempTime;
+		FSDate_t TempDate;
+		time_t SimUTCDest;
 
 		if(ReUpdateGUI) {
 			ReUpdateGUI = 0;
@@ -110,7 +113,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		if(Stats.SimStatus) {
 		
 			/* Get the simulator's UTC time */
-			SyncGetTime(&Stats.SimUTCTime);	
+			SyncGetFSTimestamp(&Stats.SimUTCTime);	
 
 			/* Get the simulator's pause state (paused or not) */
 			if(Settings.NoSyncPaused) {		
@@ -148,9 +151,23 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 					Stats.SyncNext = CurrentTime+Settings.AutoSyncInterval;
 					Stats.SyncInterval = Settings.AutoSyncInterval; /* Progress bar is drawn based on current synch, not next one */
 				}
-				/* Check if it's time to sync */
+				/* Check if it's time to sync and if time, sync*/
 				if(Stats.SyncNext <= CurrentTime) {
-					if(nResult = SyncGo(&Stats.SysUTCTime)) {
+					if(SyncGetSimVersion() == SIM_FSX && Settings.FSXUseFSSeconds) {
+						SyncGetFSTimeDate(&TempTime,&TempDate);
+						/* Reusing a tm structure to set up right FS X time */
+						systm->tm_sec = TempTime.Second;
+						if((SimUTCDest = mktime(systm)) == (time_t)-1) {
+							debuglog(DEBUG_ERROR,"mktime failed making system UTC time for FSX!\n");
+							SimUTCDest = CurrentTime; /* If we can't get UTC, then lets have local */
+						}
+						if(Settings.SystemUTCCorrectionState)
+							SimUTCDest += Settings.SystemUTCCorrection*60;						
+					} else {
+						/* Use system seconds */
+						SimUTCDest = Stats.SysUTCTime;
+					}
+					if(nResult = SyncGo(SimUTCDest,Settings.FSXNoSyncLocalTime)) {
 						Stats.SyncNext = time(&CurrentTime)+Settings.AutoSyncInterval; /* Sync takes time, update the time on the way */
 						Stats.SyncLast = CurrentTime;
 						Stats.SyncInterval = Settings.AutoSyncInterval;
@@ -165,8 +182,22 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 				Stats.SyncInterval = 0;
 				if(GetRTVal(FST_SYNCNOW)) {
 					SetRTVal(FST_SYNCNOW, 0); /* Clear the event, regardless of success or failure */
-					if(!CancelSync) {			
-						if(SyncGo(&Stats.SysUTCTime)) {
+					if(!CancelSync) {
+						if(SyncGetSimVersion() == SIM_FSX && Settings.FSXUseFSSeconds) {
+							SyncGetFSTimeDate(&TempTime,&TempDate);
+							/* Reusing a tm structure to set up right FS X time */
+							systm->tm_sec = TempTime.Second;
+							if((SimUTCDest = mktime(systm)) == (time_t)-1) {
+								debuglog(DEBUG_ERROR,"mktime failed making system UTC time for FSX!\n");
+								SimUTCDest = CurrentTime; /* If we can't get UTC, then lets have local */
+							}
+							if(Settings.SystemUTCCorrectionState)
+								SimUTCDest += Settings.SystemUTCCorrection*60;						
+						} else {
+							/* Use system seconds */
+							SimUTCDest = Stats.SysUTCTime;
+						}														
+						if(SyncGo(SimUTCDest,Settings.FSXNoSyncLocalTime)) {
 							Stats.SyncLast = time(&CurrentTime);
 							Stats.SyncLastModified = 1;
 						}
@@ -182,7 +213,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 
 			/* Set up the affinity fix and\or the priority fix depending on settings */
 			if(Stats.SimStatus)
-				AffinityPriorityFix(Settings.DisableAffinityFix,Settings.DisablePriorityFix);
+				AffinityPriorityFix(Settings.EnableAffinityFix,Settings.EnablePriorityFix);
 				
 		} /* SimStatus */
 
@@ -310,7 +341,7 @@ int HotkeysUnregister(HWND hwnd) {
 }
 
 /* Thread safe - doesn't care about the lock */	
-static int AffinityPriorityFix(DWORD DisableAffinityFix, DWORD DisablePriorityFix) {
+static int AffinityPriorityFix(DWORD EnableAffinityFix, DWORD EnablePriorityFix) {
 	HWND hFShwnd;
 	DWORD nPriority;
 	DWORD nProcAffinity;
@@ -318,7 +349,7 @@ static int AffinityPriorityFix(DWORD DisableAffinityFix, DWORD DisablePriorityFi
 	DWORD nProcId;
 	HANDLE hFS;	
 
-	if(!Settings.DisableAffinityFix || !Settings.DisablePriorityFix) {
+	if(EnableAffinityFix || EnablePriorityFix) {
 
 		/* Start by finding the window */
 		switch(FSUIPC_FS_Version) {
@@ -361,7 +392,7 @@ static int AffinityPriorityFix(DWORD DisableAffinityFix, DWORD DisablePriorityFi
 		}
 		
 		/* Get FS priority class and copy it to our process */		
-		if(!DisablePriorityFix) {
+		if(EnablePriorityFix) {
 			if(!(nPriority = GetPriorityClass(hFS))) {
 				debuglog(DEBUG_WARNING,"Failed getting FS priority class!\n");
 			} else {
@@ -371,7 +402,7 @@ static int AffinityPriorityFix(DWORD DisableAffinityFix, DWORD DisablePriorityFi
 		}		
 		
 		/* Get FS affinity mask and copy it to our process */
-		if(!DisableAffinityFix) {
+		if(EnableAffinityFix) {
 			if(!GetProcessAffinityMask(hFS,&nProcAffinity,&nSysAffinity)) {
 				debuglog(DEBUG_WARNING,"Failed getting FS affinity mask!\n");
 			} else {

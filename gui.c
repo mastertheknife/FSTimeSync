@@ -774,7 +774,9 @@ static void GUIOptionsDraw(HWND hwnd,SyncOptions_t* SafeSets) {
 	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"2 minutes");
 	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"3 minutes");
 	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"5 minutes");
-	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"10 minutes");	
+	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"10 minutes");
+	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"20 minutes");	
+	SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_ADDSTRING,0,(LPARAM)"30 minutes");				
 
 	if(SafeSets->StartMinimized)
 		SendDlgItemMessage(hwnd,IDC_STARTMINIMIZED,BM_SETCHECK,(WPARAM)BST_CHECKED,0);
@@ -829,7 +831,13 @@ static void GUIOptionsDraw(HWND hwnd,SyncOptions_t* SafeSets) {
 			break;
 		case 600:
 			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)7,0);
-			break;			
+			break;	
+		case 1200:
+			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)8,0);
+			break;
+		case 1800:
+			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)9,0);
+			break;								
 		default:
 			SendDlgItemMessage(hwnd,IDL_SYNCINT,CB_SETCURSEL,(WPARAM)1,0);
 			break;			
@@ -899,7 +907,13 @@ static void GUIOptionsSave(HWND hwnd,SyncOptions_t* SafeSets) {
 			break;
 		case 7:
 			SafeSets->AutoSyncInterval = 600;
-			break;			
+			break;
+		case 8:
+			SafeSets->AutoSyncInterval = 1200;
+			break;
+		case 9:
+			SafeSets->AutoSyncInterval = 1800;
+			break;	
 		default:
 			SafeSets->AutoSyncInterval = Defaults.AutoSyncInterval;
 			break;			

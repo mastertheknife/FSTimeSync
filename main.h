@@ -27,11 +27,12 @@
 typedef struct tagSyncOptions {
 	DWORD StartMinimized;	
 	DWORD SystemUTCCorrectionState;
-	DWORD FutureSetting00;
+	DWORD FSXNoSyncLocalTime;
+	DWORD FSXUseFSSeconds;
 	DWORD AutoOnStart;	
 	DWORD AutoSyncInterval;
-	DWORD DisableAffinityFix;
-	DWORD DisablePriorityFix;
+	DWORD EnableAffinityFix;
+	DWORD EnablePriorityFix;
 	DWORD NoSyncPaused;
 	DWORD NoSyncSimRate;
 	LONG SystemUTCCorrection;	
