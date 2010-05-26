@@ -28,7 +28,7 @@
 
 /* Globals */
 SyncOptions_t Settings;
-SyncOptions_t Defaults = {0,0,1,1,1,10,0,0,1,1,0,MAKEWORD(0x53,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(0x4D,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* Default options */
+SyncOptions_t Defaults = {0,0,0,1,10,0,0,1,1,0,MAKEWORD(0x53,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(0x4D,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* Default options */
 SyncStats_t Stats;
 CRITICAL_SECTION ProgramDataCS;
 static RuntimeVals_t RuntimeVals;
@@ -79,8 +79,6 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		time_t CurrentTime;
 		struct tm* systm;
 		int nResult;
-		FSTime_t TempTime;
-		FSDate_t TempDate;
 		time_t SimUTCDest;
 
 		if(ReUpdateGUI) {
@@ -99,9 +97,6 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 			
 		/* System UTC time */
 		systm = gmtime(&CurrentTime);
-		systm->tm_yday = 0;
-		systm->tm_wday = 0; 
-		systm->tm_isdst = 0;
 		if((Stats.SysUTCTime = mktime(systm)) == (time_t)-1) {
 			debuglog(DEBUG_ERROR,"mktime failed making system UTC time!\n");
 			Stats.SysUTCTime = CurrentTime; /* If we can't get UTC, then lets have local */
@@ -153,21 +148,9 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 				}
 				/* Check if it's time to sync and if time, sync*/
 				if(Stats.SyncNext <= CurrentTime) {
-					if(SyncGetSimVersion() == SIM_FSX && Settings.FSXUseFSSeconds) {
-						SyncGetFSTimeDate(&TempTime,&TempDate);
-						/* Reusing a tm structure to set up right FS X time */
-						systm->tm_sec = TempTime.Second;
-						if((SimUTCDest = mktime(systm)) == (time_t)-1) {
-							debuglog(DEBUG_ERROR,"mktime failed making system UTC time for FSX!\n");
-							SimUTCDest = CurrentTime; /* If we can't get UTC, then lets have local */
-						}
-						if(Settings.SystemUTCCorrectionState)
-							SimUTCDest += Settings.SystemUTCCorrection*60;						
-					} else {
-						/* Use system seconds */
-						SimUTCDest = Stats.SysUTCTime;
-					}
-					if(nResult = SyncGo(SimUTCDest,Settings.FSXNoSyncLocalTime)) {
+					/* Use system UTC time */
+					SimUTCDest = Stats.SysUTCTime;
+					if(nResult = SyncGo(SimUTCDest,Settings.FSNoSyncLocalTime)) {
 						Stats.SyncNext = time(&CurrentTime)+Settings.AutoSyncInterval; /* Sync takes time, update the time on the way */
 						Stats.SyncLast = CurrentTime;
 						Stats.SyncInterval = Settings.AutoSyncInterval;
@@ -183,21 +166,9 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 				if(GetRTVal(FST_SYNCNOW)) {
 					SetRTVal(FST_SYNCNOW, 0); /* Clear the event, regardless of success or failure */
 					if(!CancelSync) {
-						if(SyncGetSimVersion() == SIM_FSX && Settings.FSXUseFSSeconds) {
-							SyncGetFSTimeDate(&TempTime,&TempDate);
-							/* Reusing a tm structure to set up right FS X time */
-							systm->tm_sec = TempTime.Second;
-							if((SimUTCDest = mktime(systm)) == (time_t)-1) {
-								debuglog(DEBUG_ERROR,"mktime failed making system UTC time for FSX!\n");
-								SimUTCDest = CurrentTime; /* If we can't get UTC, then lets have local */
-							}
-							if(Settings.SystemUTCCorrectionState)
-								SimUTCDest += Settings.SystemUTCCorrection*60;						
-						} else {
-							/* Use system seconds */
-							SimUTCDest = Stats.SysUTCTime;
-						}														
-						if(SyncGo(SimUTCDest,Settings.FSXNoSyncLocalTime)) {
+						/* Use system UTC time */
+						SimUTCDest = Stats.SysUTCTime;														
+						if(SyncGo(SimUTCDest,Settings.FSNoSyncLocalTime)) {
 							Stats.SyncLast = time(&CurrentTime);
 							Stats.SyncLastModified = 1;
 						}

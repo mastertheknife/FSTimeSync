@@ -39,7 +39,7 @@ typedef struct tagFSDate_t {
 int SyncConnect(DWORD Sim);
 int SyncDisconnect();
 int SyncGetConStatus();
-int SyncGo(time_t UTCtime, DWORD FSXNoSyncLocalTime);
+int SyncGo(time_t UTCtime, DWORD FSNoSyncLocalTime);
 int SyncGetFSTimestamp(time_t* UTCtime);
 int SyncGetFSTimeDate(FSTime_t* TimeDest, FSDate_t* DateDest);
 int SyncGetPause(DWORD* bPaused);

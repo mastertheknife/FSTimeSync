@@ -56,8 +56,8 @@ int RegistryReadSettings(SyncOptions_t* ReadSettings) {
 		ReadSettings->EnablePriorityFix = Defaults.EnablePriorityFix;
 		ReadSettings->ManSyncHotkey = Defaults.ManSyncHotkey;
 		ReadSettings->ModeSwitchHotkey = Defaults.ModeSwitchHotkey;
-		ReadSettings->FSXNoSyncLocalTime = Defaults.FSXNoSyncLocalTime;
-		ReadSettings->FSXUseFSSeconds = Defaults.FSXUseFSSeconds;
+		ReadSettings->FSNoSyncLocalTime = Defaults.FSNoSyncLocalTime;
+		
 		return 0;
 	}				
 	
@@ -118,12 +118,8 @@ int RegistryReadSettings(SyncOptions_t* ReadSettings) {
 		ReadSettings->EnablePriorityFix = Defaults.EnablePriorityFix;
 	}		
 
-	if((nRegResult = RegQueryValueEx(hRegKey,"FSXNoSyncLocalTime",0,NULL,(LPVOID)&(ReadSettings->FSXNoSyncLocalTime),&dwSize)) != ERROR_SUCCESS) {
-		ReadSettings->FSXNoSyncLocalTime = Defaults.FSXNoSyncLocalTime;
-	}
-
-	if((nRegResult = RegQueryValueEx(hRegKey,"FSXUseFSSeconds",0,NULL,(LPVOID)&(ReadSettings->FSXUseFSSeconds),&dwSize)) != ERROR_SUCCESS) {
-		ReadSettings->FSXUseFSSeconds = Defaults.FSXUseFSSeconds;
+	if((nRegResult = RegQueryValueEx(hRegKey,"FSNoSyncLocalTime",0,NULL,(LPVOID)&(ReadSettings->FSNoSyncLocalTime),&dwSize)) != ERROR_SUCCESS) {
+		ReadSettings->FSNoSyncLocalTime = Defaults.FSNoSyncLocalTime;
 	}
 	
 	if((nRegResult = RegQueryValueEx(hRegKey,"ManSyncHotkey",0,NULL,(LPVOID)&dwTemp,&dwSize)) != ERROR_SUCCESS) {
@@ -196,12 +192,8 @@ int RegistryWriteSettings(SyncOptions_t* WriteSettings) {
 		debuglog(DEBUG_WARNING,"Failed writing EnableAffinityFix registry value.\n");		
 	}		
 
-	if(RegSetValueEx(hRegKey,"FSXNoSyncLocalTime",0,REG_DWORD,(LPVOID)&(WriteSettings->FSXNoSyncLocalTime),sizeof(DWORD)) != ERROR_SUCCESS) {
-		debuglog(DEBUG_WARNING,"Failed writing FSXNoSyncLocalTime registry value.\n");		
-	}
-
-	if(RegSetValueEx(hRegKey,"FSXUseFSSeconds",0,REG_DWORD,(LPVOID)&(WriteSettings->FSXUseFSSeconds),sizeof(DWORD)) != ERROR_SUCCESS) {
-		debuglog(DEBUG_WARNING,"Failed writing FSXUseFSSeconds registry value.\n");		
+	if(RegSetValueEx(hRegKey,"FSNoSyncLocalTime",0,REG_DWORD,(LPVOID)&(WriteSettings->FSNoSyncLocalTime),sizeof(DWORD)) != ERROR_SUCCESS) {
+		debuglog(DEBUG_WARNING,"Failed writing FSNoSyncLocalTime registry value.\n");		
 	}
 	
 	dwTemp = WriteSettings->ManSyncHotkey;	

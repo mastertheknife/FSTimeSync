@@ -51,7 +51,7 @@ int SyncGetConStatus(void) {
 
 /* Syncs the simulator UTC time from the specified UTC time,
   takes care of updating local time as well by getting the timezone difference */
-int SyncGo(time_t UTCtime, DWORD FSXNoSyncLocalTime) {
+int SyncGo(time_t UTCtime, DWORD FSNoSyncLocalTime) {
 	DWORD nResult;
 	int TimeDifference = 0;
 	FSTime_t FSTime;
@@ -79,10 +79,9 @@ int SyncGo(time_t UTCtime, DWORD FSXNoSyncLocalTime) {
 	FSDate.Year = ptm->tm_year + 1900;		
 	
 	/* For FS2004 and probably earlier versions, updating the UTC time doesn't update the local time
-	So what i did was get UTC time difference from local time of the area we'e flying in and calculate local time from that
-	But it seems this is not needed for FS X. */ 
-	if(SyncGetSimVersion() != SIM_FSX && !FSXNoSyncLocalTime) {
-	debuglog(DEBUG_CAPTURE,"Not skipping local time updating for FS X\n");
+	So what i did was get UTC time difference from local time of the area we'e flying in and calculate local time from that */
+	if(!FSNoSyncLocalTime) {
+	debuglog(DEBUG_CAPTURE,"Not skipping local time updating\n");
 		
 		/* Get the UTC<->Local time time difference, e.g. if we're flying over israel (GMT+2)
 	    Time difference would be 120 minutes (from UTC). */
@@ -116,7 +115,7 @@ int SyncGo(time_t UTCtime, DWORD FSXNoSyncLocalTime) {
 	
 	/* Skipping local time, this means we only write 3 bytes instead of 5 bytes. */	
 	} else {
-		debuglog(DEBUG_CAPTURE,"Skipping local time updating for FS X\n");		
+		debuglog(DEBUG_CAPTURE,"Skipping local time updating.\n");		
 		
 		if(!FSUIPC_Write(0x238,3,&FSTime,&nResult)) {
 			debuglog(DEBUG_ERROR,"Failed writing time data excluding local time to FS, FSUIPC returned: %u\n",nResult);
