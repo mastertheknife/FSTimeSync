@@ -16,8 +16,6 @@
 ****************************************************************************/
 
 #define _WIN32_IE 0x0500
-#define TRAYICONMSG WM_USER+2
-#define MAINSIGNALMSG WM_USER+1
 #include "globalinc.h"
 #include "debug.h"
 #include "gui.h"
@@ -29,7 +27,6 @@
 HWND hDummyWindow = NULL;
 static HWND hMainDlg = NULL;
 static HANDLE hGUIThread = NULL;
-static UINT_PTR hDrawTimer;
 static SyncOptions_t PendingSettings;
 static HICON hIcon;
 static HICON hIconGray;
@@ -43,14 +40,19 @@ static LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, 
 	HWND hTemphwnd;
     switch(Message)
     {
-		case MAINSIGNALMSG:
-			if(wParam == 10)
+		case FSTSGUI_WM_MAINMSG:
+			if(wParam == FSTSGUI_GUIFULLUPDATE) {
 				/* Lock for the settings and stats */
 				EnterCriticalSection(&ProgramDataCS);					
 				GUIUpdate(&Settings,&Stats);
-				LeaveCriticalSection(&ProgramDataCS);	
-			break;	
-		case TRAYICONMSG:
+				LeaveCriticalSection(&ProgramDataCS);
+			} else if(wParam == FSTSGUI_GUIELEMUPDATE) {
+				EnterCriticalSection(&ProgramDataCS);
+				GUIElementsUpdate(&Settings,&Stats);
+				LeaveCriticalSection(&ProgramDataCS);
+			}	
+			break;
+		case FSTSGUI_WM_TRAYMSG:
 			switch(lParam) {
 				case WM_CONTEXTMENU:
 					{
@@ -173,31 +175,15 @@ static BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 				/* Set the icon for this dialog */
 				GUISetDialogIcon(hwnd,Stats.SimStatus);
 
-				/* Create the draw timer */
-				hDrawTimer = SetTimer(hwnd,4231,200,NULL);
-
 				/* Set the hMainDlg handle for the next call */
 				hMainDlg = hwnd;
 				
 				/* Draw the dialog elements */
 				GUIUpdate(&Settings,&Stats);
 
-				/* Update the dialog elements */
-				GUIElementsUpdate(&Settings,&Stats);
-				
 				/* No need for the lock anymore */
 				LeaveCriticalSection(&ProgramDataCS);
 			}
-			break;
-		case WM_TIMER:
-			/* Updates the main window elements, such as time and sync status */
-			/* Only updates the elements if the main loop finished another cycle */			
-			/* Lock for the settings and stats */
-			EnterCriticalSection(&ProgramDataCS);
-			if(Stats.UpdateElements)
-				GUIElementsUpdate(&Settings,&Stats);
-				Stats.UpdateElements = 0; /* No need to re-update the elements if nothing has changed */							
-			LeaveCriticalSection(&ProgramDataCS);			
 			break;
 		case WM_COMMAND:
 			switch(LOWORD(wParam)) {
@@ -245,7 +231,6 @@ static BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM 
 			}	
 			break;
 		case WM_DESTROY:
-			hDrawTimer = KillTimer(hwnd,4231);
 			hMainDlg = NULL; /* To mark that this window is closed */
 			if(GetRTVal(FST_QUIT))
 				PostQuitMessage(0); /* Quit */
@@ -400,7 +385,7 @@ static DWORD WINAPI GUIThreadProc(LPVOID lpParameter) {
 	TrayIconData.uID = 120988;
 	TrayIconData.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE;
 	TrayIconData.hIcon = hIconGray;
-	TrayIconData.uCallbackMessage = TRAYICONMSG;	
+	TrayIconData.uCallbackMessage = FSTSGUI_WM_TRAYMSG;	
 	TrayIconData.uVersion = NOTIFYICON_VERSION; /* Windows 2000 or later */
 	strcpy(TrayIconData.szTip,"");
 
@@ -635,7 +620,7 @@ static void GUIUpdate(SyncOptions_t* SafeSets, SyncStats_t* SafeStats) {
 					SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"FS2004 Running");
 					break;
 				case SIM_FSX:
-					SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"FS X Running (Experimental)");
+					SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"FS X Running");
 					break;
 				default:					
 					SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"Running");

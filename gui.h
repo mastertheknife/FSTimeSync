@@ -21,6 +21,11 @@
 #include "main.h"
 #include "debug.h"
 
+#define FSTSGUI_WM_MAINMSG (WM_USER+1)
+#define FSTSGUI_WM_TRAYMSG (WM_USER+2)
+#define FSTSGUI_GUIFULLUPDATE 10
+#define FSTSGUI_GUIELEMUPDATE 11
+
 static BOOL CALLBACK OptionsDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam);
 static BOOL CALLBACK MainDlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam);
 static LRESULT CALLBACK TraynHotkeysProc(HWND hwnd,UINT Message, WPARAM wParam, LPARAM lParam);

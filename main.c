@@ -80,12 +80,6 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		struct tm* systm;
 		int nResult;
 		time_t SimUTCDest;
-
-		if(ReUpdateGUI) {
-			ReUpdateGUI = 0;
-			/* Signal GUI thread to call GUIUpdate */
-			PostMessage(hDummyWindow,WM_USER+1,10,0);
-		}
 		
 		if(CancelSync)
 			CancelSync = 0;
@@ -110,22 +104,24 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 			/* Get the simulator's UTC time */
 			SyncGetFSTimestamp(&Stats.SimUTCTime);	
 
-			/* Get the simulator's pause state (paused or not) */
+			/* Check for the setting to sync if paused */
 			if(Settings.NoSyncPaused) {		
 				/* Get the simulator's state (paused or not) */
 				SyncGetPause(&Stats.SimPaused);
 				if(Stats.SimPaused)
 					CancelSync = 1;	
+				/* Sim pause state changed, need to update the GUI */
 				if(Stats.SimPaused != SimPausedPrev)
-						ReUpdateGUI = 1;
+					ReUpdateGUI = 1;
 			}
 
-			/* Get the simulator's simulation rate (256=1) */			
+			/* Check the no sync when sim rate other than 1x setting */			
 			if(Settings.NoSyncSimRate) {		
 				/* Get the simulator's simulation rate (256=1) */
 				SyncGetSimRate(&Stats.SimRate);	
 				if(Stats.SimRate != 256)
 					CancelSync = 1;
+				/* Sim rate changed, need to update the GUI */	
 				if(Stats.SimRate != SimRatePrev)
 					ReUpdateGUI = 1;						
 			}
@@ -188,6 +184,8 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 				
 		} /* SimStatus */
 
+		/* Copy the variables over the previous ones
+		so in next loop iteration we can know if something changed */
 		if(Settings.NoSyncPaused)
 			SimPausedPrev = Stats.SimPaused;
 
@@ -196,8 +194,19 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		
 		SimStatusPrev = Stats.SimStatus;
 		
-		/* Let GUIUpdateElements() know that it can update */
-		Stats.UpdateElements = 1;
+		/* Call GUIUpdate() (indirectly) if set to 1 */
+		/* This updates everything in the main window and calls update elements and update tray */
+		if(ReUpdateGUI) {
+			ReUpdateGUI = 0;
+			/* Signal GUI thread to call GUIUpdate */
+			PostMessage(hDummyWindow,FSTSGUI_WM_MAINMSG,FSTSGUI_GUIFULLUPDATE,0);
+		} else {		
+			/* Updating the elements (such as progress bar) should happen at every loop iteration
+			If GUIUpdate() was called, it will also update the elements so no need to call it again.
+			But if it wasn't, we do it ourselves by telling GUI thread to update the elements */
+			/* Signal GUI thread to call GUIElementsUpdate */
+			PostMessage(hDummyWindow,FSTSGUI_WM_MAINMSG,FSTSGUI_GUIELEMUPDATE,0);
+		}
 			
 		LeaveCriticalSection(&ProgramDataCS);		
 		Sleep(SLEEP_DURATION);
