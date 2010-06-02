@@ -1,19 +1,19 @@
-/****************************************************************************
-*	This file is part of FSTimeSync.										*
-*																			*
-*	FSTimeSync is free software: you can redistribute it and/or modify		*
+/********************************************************************************
+*	This file is part of FSTimeSync.					*
+*										*
+*	FSTimeSync is free software: you can redistribute it and/or modify	*
 *	it under the terms of the GNU General Public License as published by	*
-*	the Free Software Foundation, either version 3 of the License, or		*
-*	(at your option) any later version.										*
-*																			*
-*	FSTimeSync is distributed in the hope that it will be useful,			*
-*	but WITHOUT ANY WARRANTY; without even the implied warranty of			*
-*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the			*
-*	GNU General Public License for more details.							*
-*																			*
-*	You should have received a copy of the GNU General Public License		*
-*	along with FSTimeSync.  If not, see <http://www.gnu.org/licenses/>.		*
-****************************************************************************/
+*	the Free Software Foundation, either version 3 of the License, or	*
+*	(at your option) any later version.					*
+*										*
+*	FSTimeSync is distributed in the hope that it will be useful,		*
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of		*
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the		*
+*	GNU General Public License for more details.				*
+*										*
+*	You should have received a copy of the GNU General Public License	*
+*	along with FSTimeSync.  If not, see <http://www.gnu.org/licenses/>.	*
+********************************************************************************/
 
 #define _WIN32_IE 0x0500
 #include "globalinc.h"
@@ -536,13 +536,13 @@ static void GUIElementsUpdate(SyncOptions_t* SafeSets, SyncStats_t* SafeStats) {
 	SetDlgItemText(hMainDlg,IDT_SYSUTC,lpstr);		
 
 	if(SafeStats->SyncLastModified) {
-		sprintf(StrBuff,"Last synchronizated in %s",ctime(&SafeStats->SyncLast));
+		sprintf(StrBuff,"Last synchronizated on %s",ctime(&SafeStats->SyncLast));
 		SetDlgItemText(hMainDlg,IDT_LASTSYNC,StrBuff);
 		SafeStats->SyncLastModified = 0;
 	}
 
-	/* Sync status */
-	if(SafeStats->SimStatus) {
+	/* Sync status but only update those if simulator is ready */
+	if(SafeStats->SimStatus && (!SafeSets->FSMenuDetection || SafeStats->SimState.SimInFlight)) {
 		/* FS UTC Time */	
 		lpstr = ctime(&SafeStats->SimUTCTime);	
 		SetDlgItemText(hMainDlg,IDT_SIMUTC,lpstr);
@@ -636,33 +636,38 @@ static void GUIUpdate(SyncOptions_t* SafeSets, SyncStats_t* SafeStats) {
 				SetDlgItemText(hMainDlg,IDT_TOSYNC,"To synchronizate the flight simulator clock, click on the\nSync Now button or the assigned hotkey (see options).");
 			}
 			
-			if(SafeSets->NoSyncSimRate) {
-				if(SafeStats->SimRate != 256) {
-					SetDlgItemText(hMainDlg,IDT_TOSYNC,"Flight Simulator simulation rate is other than 1x, synchronization is disabled (see options).");
+			if(SafeSets->FSMenuDetection && !SafeStats->SimState.SimInFlight) {
+				SetDlgItemText(hMainDlg,IDT_TOSYNC,"Flight Simulator is not ready or not in a flight.\nSynchronization disabled.");
+				EnableWindow(hBSync,FALSE);
+				ShowWindow(hPNextSync,SW_HIDE);
+				ShowWindow(hNextSync,SW_HIDE);
+				ShowWindow(hToSync,SW_SHOW);
+				/* Make FS UTC and Sync percent unavailable */
+				SetDlgItemText(hMainDlg,IDT_SIMUTC,"N/A");			
+				SetDlgItemText(hMainDlg,IDT_SYNCSTATUS,"N/A");				
+			} else {
+				if(SafeSets->NoSyncSimRate && SafeStats->SimState.SimRate != 256) {
+					SetDlgItemText(hMainDlg,IDT_TOSYNC,"Flight Simulator simulation rate is other than 1x.\nSynchronization disabled (see options).");
 					EnableWindow(hBSync,FALSE);
 					ShowWindow(hPNextSync,SW_HIDE);
-					ShowWindow(hNextSync,SW_HIDE);				
-					ShowWindow(hToSync,SW_SHOW);					
-				}
-			}		
-			if(SafeSets->NoSyncPaused) {
-				if(SafeStats->SimPaused) {
-					SetDlgItemText(hMainDlg,IDT_TOSYNC,"Flight Simulator is paused, synchronization is disabled (see options).");
+					ShowWindow(hNextSync,SW_HIDE);
+					ShowWindow(hToSync,SW_SHOW);
+				} else if(SafeSets->NoSyncPaused && SafeStats->SimState.SimPaused) {
+					SetDlgItemText(hMainDlg,IDT_TOSYNC,"Flight Simulator is paused.\nSynchronization disabled (see options).");
 					EnableWindow(hBSync,FALSE);
 					ShowWindow(hPNextSync,SW_HIDE);
-					ShowWindow(hNextSync,SW_HIDE);				
-					ShowWindow(hToSync,SW_SHOW);						
+					ShowWindow(hNextSync,SW_HIDE);
+					ShowWindow(hToSync,SW_SHOW);
 				}
-			}
-			if(SafeSets->NoSyncPaused && SafeSets->NoSyncSimRate) {
-				if(SafeStats->SimPaused && SafeStats->SimRate != 256) {
-					SetDlgItemText(hMainDlg,IDT_TOSYNC,"Flight Simulator is paused and the simulation rate is other than 1x, synchronization is disabled (see options).");
+				
+				if((SafeSets->NoSyncPaused && SafeSets->NoSyncSimRate) && (SafeStats->SimState.SimPaused && SafeStats->SimState.SimRate != 256)) {
+					SetDlgItemText(hMainDlg,IDT_TOSYNC,"Flight Simulator is paused and the simulation rate is other than 1x\nSynchronization disabled (see options).");
 					EnableWindow(hBSync,FALSE);
 					ShowWindow(hPNextSync,SW_HIDE);
-					ShowWindow(hNextSync,SW_HIDE);				
-					ShowWindow(hToSync,SW_SHOW);						
+					ShowWindow(hNextSync,SW_HIDE);
+					ShowWindow(hToSync,SW_SHOW);
 				}
-			}
+			} /* End of simulator in flight\ready */
 						
 		} else {
 			SetDlgItemText(hMainDlg,IDT_SIMSTATUS,"Not Running"); 				

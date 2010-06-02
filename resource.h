@@ -1,19 +1,19 @@
-/****************************************************************************
-*	This file is part of FSTimeSync.										*
-*																			*
-*	FSTimeSync is free software: you can redistribute it and/or modify		*
+/********************************************************************************
+*	This file is part of FSTimeSync.					*
+*										*
+*	FSTimeSync is free software: you can redistribute it and/or modify	*
 *	it under the terms of the GNU General Public License as published by	*
-*	the Free Software Foundation, either version 3 of the License, or		*
-*	(at your option) any later version.										*
-*																			*
-*	FSTimeSync is distributed in the hope that it will be useful,			*
-*	but WITHOUT ANY WARRANTY; without even the implied warranty of			*
-*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the			*
-*	GNU General Public License for more details.							*
-*																			*
-*	You should have received a copy of the GNU General Public License		*
-*	along with FSTimeSync.  If not, see <http://www.gnu.org/licenses/>.		*
-****************************************************************************/
+*	the Free Software Foundation, either version 3 of the License, or	*
+*	(at your option) any later version.					*
+*										*
+*	FSTimeSync is distributed in the hope that it will be useful,		*
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of		*
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the		*
+*	GNU General Public License for more details.				*
+*										*
+*	You should have received a copy of the GNU General Public License	*
+*	along with FSTimeSync.  If not, see <http://www.gnu.org/licenses/>.	*
+********************************************************************************/
 
 #ifndef IDC_STATIC
 #define IDC_STATIC (-1)
@@ -42,7 +42,7 @@
 #define IDB_OK                                  1040
 #define IDB_CLOSE                               1050
 #define IDB_CANCEL                              1051
-#define IDB_ABOUT								1052
+#define IDB_ABOUT                               1052
 #define IDT_NEXTSYNC                            1053
 #define IDP_NEXTSYNC                            1055
 #define IDB_DEFAULTS                            1100

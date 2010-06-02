@@ -1,25 +1,24 @@
-/****************************************************************************
-*	This file is part of FSTimeSync.										*
-*																			*
-*	FSTimeSync is free software: you can redistribute it and/or modify		*
+/********************************************************************************
+*	This file is part of FSTimeSync.					*
+*										*
+*	FSTimeSync is free software: you can redistribute it and/or modify	*
 *	it under the terms of the GNU General Public License as published by	*
-*	the Free Software Foundation, either version 3 of the License, or		*
-*	(at your option) any later version.										*
-*																			*
-*	FSTimeSync is distributed in the hope that it will be useful,			*
-*	but WITHOUT ANY WARRANTY; without even the implied warranty of			*
-*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the			*
-*	GNU General Public License for more details.							*
-*																			*
-*	You should have received a copy of the GNU General Public License		*
-*	along with FSTimeSync.  If not, see <http://www.gnu.org/licenses/>.		*
-****************************************************************************/
+*	the Free Software Foundation, either version 3 of the License, or	*
+*	(at your option) any later version.					*
+*										*
+*	FSTimeSync is distributed in the hope that it will be useful,		*
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of		*
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the		*
+*	GNU General Public License for more details.				*
+*										*
+*	You should have received a copy of the GNU General Public License	*
+*	along with FSTimeSync.  If not, see <http://www.gnu.org/licenses/>.	*
+********************************************************************************/
 
 #ifndef _FSTS_SYNC_H_INC_
 #define _FSTS_SYNC_H_INC_
 #include "globalinc.h"
 #include "debug.h"
-#include "main.h"
 
 /* Internal time and date structures */
 typedef struct tagFSTime_t {
@@ -36,17 +35,24 @@ typedef struct tagFSDate_t {
    WORD Year; // 0x240
 } FSDate_t;
 
+typedef struct tagFSState_t {
+  DWORD SimPaused;
+  DWORD SimRate;
+  DWORD SimInFlight;
+} FSState_t;
+
 int SyncConnect(DWORD Sim);
 int SyncDisconnect();
 int SyncGetConStatus();
-int SyncGo(time_t UTCtime, DWORD FSNoSyncLocalTime);
+
+int SyncGo(time_t UTCtime, DWORD FSSyncMethod);
 int SyncGetFSTimestamp(time_t* UTCtime);
 int SyncGetFSTimeDate(FSTime_t* TimeDest, FSDate_t* DateDest);
-int SyncGetPause(DWORD* bPaused);
-int SyncGetSimRate(DWORD* SimRate);
-int SyncStartup();
-int SyncShutdown();
+int SyncGetState(FSState_t* StateDest, DWORD FSMenuDetection);
 int SyncGetSimVersion();
 static int SyncGetSimUTCLocalDifference(int* ZoneDifference);
+
+int SyncStartup();
+int SyncShutdown();
 
 #endif

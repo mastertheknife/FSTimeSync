@@ -1,20 +1,21 @@
-/****************************************************************************
-*	This file is part of FSTimeSync.										*
-*																			*
-*	FSTimeSync is free software: you can redistribute it and/or modify		*
+/********************************************************************************
+*	This file is part of FSTimeSync.					*
+*										*
+*	FSTimeSync is free software: you can redistribute it and/or modify	*
 *	it under the terms of the GNU General Public License as published by	*
-*	the Free Software Foundation, either version 3 of the License, or		*
-*	(at your option) any later version.										*
-*																			*
-*	FSTimeSync is distributed in the hope that it will be useful,			*
-*	but WITHOUT ANY WARRANTY; without even the implied warranty of			*
-*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the			*
-*	GNU General Public License for more details.							*
-*																			*
-*	You should have received a copy of the GNU General Public License		*
-*	along with FSTimeSync.  If not, see <http://www.gnu.org/licenses/>.		*
-****************************************************************************/
+*	the Free Software Foundation, either version 3 of the License, or	*
+*	(at your option) any later version.					*
+*										*
+*	FSTimeSync is distributed in the hope that it will be useful,		*
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of		*
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the		*
+*	GNU General Public License for more details.				*
+*										*
+*	You should have received a copy of the GNU General Public License	*
+*	along with FSTimeSync.  If not, see <http://www.gnu.org/licenses/>.	*
+********************************************************************************/
 
+/* Program timer, mainly controls responsiveness */
 #define SLEEP_DURATION 100
 #include "globalinc.h"
 #include "debug.h"
@@ -28,7 +29,7 @@
 
 /* Globals */
 SyncOptions_t Settings;
-SyncOptions_t Defaults = {0,0,0,1,10,0,0,1,1,0,MAKEWORD(0x53,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(0x4D,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* Default options */
+SyncOptions_t Defaults = {0,0,1,1,1,10,0,0,1,1,0,MAKEWORD(0x53,(HOTKEYF_CONTROL | HOTKEYF_SHIFT)),MAKEWORD(0x4D,(HOTKEYF_CONTROL | HOTKEYF_SHIFT))}; /* Default options */
 SyncStats_t Stats;
 CRITICAL_SECTION ProgramDataCS;
 static RuntimeVals_t RuntimeVals;
@@ -38,11 +39,12 @@ static CRITICAL_SECTION ProgramControlCS;
 Version_t Ver = {__TIME__,__DATE__,"v1.0"};
 
 /* Locals */
-static DWORD ReUpdateGUI;
+static DWORD ReUpdateGUI; /* Perform full GUI update at the end of the loop iteration */
+static DWORD CancelSync; /* Skip any sync attempt */
+
 static DWORD SimStatusPrev;
-static DWORD SimPausedPrev;
-static DWORD SimRatePrev;
-static DWORD CancelSync;
+static FSState_t SimStatePrev;
+
 
 int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpszArgument, int nCmdShow) {
 	/* Mutex to prevent multiple instances of this application */
@@ -81,6 +83,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 		int nResult;
 		time_t SimUTCDest;
 		
+		/* Reset CancelSync */
 		if(CancelSync)
 			CancelSync = 0;
 
@@ -99,33 +102,40 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 			Stats.SysUTCTime += Settings.SystemUTCCorrection*60;
 
 		/* Only proceed if sim is connected */
-		if(Stats.SimStatus) {
-		
+		if(Stats.SimStatus) {	
 			/* Get the simulator's UTC time */
-			SyncGetFSTimestamp(&Stats.SimUTCTime);	
-
-			/* Check for the setting to sync if paused */
-			if(Settings.NoSyncPaused) {		
-				/* Get the simulator's state (paused or not) */
-				SyncGetPause(&Stats.SimPaused);
-				if(Stats.SimPaused)
+			SyncGetFSTimestamp(&Stats.SimUTCTime);			
+			/* Get some information what the simulator is doing */
+			SyncGetState(&Stats.SimState,Settings.FSMenuDetection);
+			
+			/* Check to see if FSMenuDetection is not set to 0 (skip) */
+			if(Settings.FSMenuDetection) {
+				/* Cancel any possible sync if simulator is in a menu or dialog*/
+				if(!Stats.SimState.SimInFlight)
 					CancelSync = 1;	
-				/* Sim pause state changed, need to update the GUI */
-				if(Stats.SimPaused != SimPausedPrev)
+				/* Sim in flight state might have changed, need to update the GUI */
+				if(Stats.SimState.SimInFlight != SimStatePrev.SimInFlight)
 					ReUpdateGUI = 1;
 			}
-
-			/* Check the no sync when sim rate other than 1x setting */			
-			if(Settings.NoSyncSimRate) {		
-				/* Get the simulator's simulation rate (256=1) */
-				SyncGetSimRate(&Stats.SimRate);	
-				if(Stats.SimRate != 256)
-					CancelSync = 1;
-				/* Sim rate changed, need to update the GUI */	
-				if(Stats.SimRate != SimRatePrev)
-					ReUpdateGUI = 1;						
+			/* Check for the setting to sync if paused */
+			if(Settings.NoSyncPaused) {
+				/* Cancel any possible sync if simulator is paused */
+				if(Stats.SimState.SimPaused)
+					CancelSync = 1;	
+				/* Sim pause state might have changed, need to update the GUI */
+				if(Stats.SimState.SimPaused != SimStatePrev.SimPaused)
+					ReUpdateGUI = 1;
 			}
-					
+			/* Check the no sync when sim rate other than 1x setting */
+			if(Settings.NoSyncSimRate) {
+				/* Cancel any possible sync if simulator is at any other rate than 1x */
+				if(Stats.SimState.SimRate != 256)
+					CancelSync = 1;
+				/* Sim rate might have changed, need to update the GUI */	
+				if(Stats.SimState.SimRate != SimStatePrev.SimRate)
+					ReUpdateGUI = 1;
+			}
+						
 			if(GetRTVal(FST_AUTOMODE)) {
 				/* Check for no sync, e.g. paused or sim rate */
 				if(CancelSync) {
@@ -146,7 +156,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 				if(Stats.SyncNext <= CurrentTime) {
 					/* Use system UTC time */
 					SimUTCDest = Stats.SysUTCTime;
-					if(nResult = SyncGo(SimUTCDest,Settings.FSNoSyncLocalTime)) {
+					if(nResult = SyncGo(SimUTCDest,Settings.FSSyncMethod)) {
 						Stats.SyncNext = time(&CurrentTime)+Settings.AutoSyncInterval; /* Sync takes time, update the time on the way */
 						Stats.SyncLast = CurrentTime;
 						Stats.SyncInterval = Settings.AutoSyncInterval;
@@ -164,14 +174,15 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 					if(!CancelSync) {
 						/* Use system UTC time */
 						SimUTCDest = Stats.SysUTCTime;														
-						if(SyncGo(SimUTCDest,Settings.FSNoSyncLocalTime)) {
+						if(SyncGo(SimUTCDest,Settings.FSSyncMethod)) {
 							Stats.SyncLast = time(&CurrentTime);
 							Stats.SyncLastModified = 1;
 						}
 					}
 				} /* Sync now */
 			} /* Mode */
-		} else {
+		} else { /* Sim not connected */
+		  
 			/* Connect to the sim */
 			Stats.SimStatus = SyncConnect(SIM_ANY);
 
@@ -186,12 +197,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 
 		/* Copy the variables over the previous ones
 		so in next loop iteration we can know if something changed */
-		if(Settings.NoSyncPaused)
-			SimPausedPrev = Stats.SimPaused;
-
-		if(Settings.NoSyncSimRate)
-			SimRatePrev = Stats.SimRate;			
-		
+		memcpy(&SimStatePrev,&Stats.SimState,sizeof(FSState_t));
 		SimStatusPrev = Stats.SimStatus;
 		
 		/* Call GUIUpdate() (indirectly) if set to 1 */
@@ -227,10 +233,10 @@ int WINAPI WinMain (HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpsz
 	DeleteCriticalSection(&ProgramControlCS);
 	GUIShutdown();
 	SyncShutdown();
-    RegistryShutdown();
-    DebugShutdown();
+	RegistryShutdown();
+	DebugShutdown();
 
-    return 0;
+	return 0;
 }
 
 /* Thread safe */

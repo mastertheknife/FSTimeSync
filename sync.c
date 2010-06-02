@@ -1,19 +1,19 @@
-/****************************************************************************
-*	This file is part of FSTimeSync.										*
-*																			*
-*	FSTimeSync is free software: you can redistribute it and/or modify		*
+/********************************************************************************
+*	This file is part of FSTimeSync.					*
+*										*
+*	FSTimeSync is free software: you can redistribute it and/or modify	*
 *	it under the terms of the GNU General Public License as published by	*
-*	the Free Software Foundation, either version 3 of the License, or		*
-*	(at your option) any later version.										*
-*																			*
-*	FSTimeSync is distributed in the hope that it will be useful,			*
-*	but WITHOUT ANY WARRANTY; without even the implied warranty of			*
-*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the			*
-*	GNU General Public License for more details.							*
-*																			*
-*	You should have received a copy of the GNU General Public License		*
-*	along with FSTimeSync.  If not, see <http://www.gnu.org/licenses/>.		*
-****************************************************************************/
+*	the Free Software Foundation, either version 3 of the License, or	*
+*	(at your option) any later version.					*
+*										*
+*	FSTimeSync is distributed in the hope that it will be useful,		*
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of		*
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the		*
+*	GNU General Public License for more details.				*
+*										*
+*	You should have received a copy of the GNU General Public License	*
+*	along with FSTimeSync.  If not, see <http://www.gnu.org/licenses/>.	*
+********************************************************************************/
 
 #include "globalinc.h"
 #include "debug.h"
@@ -51,7 +51,7 @@ int SyncGetConStatus(void) {
 
 /* Syncs the simulator UTC time from the specified UTC time,
   takes care of updating local time as well by getting the timezone difference */
-int SyncGo(time_t UTCtime, DWORD FSNoSyncLocalTime) {
+int SyncGo(time_t UTCtime, DWORD FSSyncMethod) {
 	DWORD nResult;
 	int TimeDifference = 0;
 	FSTime_t FSTime;
@@ -80,7 +80,7 @@ int SyncGo(time_t UTCtime, DWORD FSNoSyncLocalTime) {
 	
 	/* For FS2004 and probably earlier versions, updating the UTC time doesn't update the local time
 	So what i did was get UTC time difference from local time of the area we'e flying in and calculate local time from that */
-	if(!FSNoSyncLocalTime) {
+	if(FSSyncMethod) {
 	debuglog(DEBUG_CAPTURE,"Not skipping local time updating\n");
 		
 		/* Get the UTC<->Local time time difference, e.g. if we're flying over israel (GMT+2)
@@ -221,48 +221,27 @@ int SyncGetFSTimestamp(time_t* UTCtime) {
 	return 1;
 }
 
-int SyncGetPause(DWORD* bPaused) {
+int SyncGetState(FSState_t* StateDest, DWORD FSMenuDetection) {
 	DWORD nResult;
-	short bPausedTemp;
+	short SimPausedTemp;
+	short SimRateTemp;
+	short InFlightTemp;
+	char ReadyToFly;
+	char InFlight;
 		
 	if(!SyncConStatus) {
 		debuglog(DEBUG_ERROR,"Called although simulator isn't connected!\n");
 		return 0;
 	}
 	
-	if(bPaused == NULL) {
+	if(StateDest == NULL) {
 		debuglog(DEBUG_ERROR,"NULL Pointer!\n");
 		return 0;
 	}
 	
-	if(!FSUIPC_Read(0x264,2,&bPausedTemp,&nResult)) {
+	if(!FSUIPC_Read(0x264,2,&SimPausedTemp,&nResult)) {
 		debuglog(DEBUG_ERROR,"Failed reading pause indicator from FS, FSUIPC returned: %u\n",nResult);
 		SyncDisconnect(); /* Disconnect for now */
-		return 0;
-	}
-		
-	if(!FSUIPC_Process(&nResult)) {
-		debuglog(DEBUG_ERROR,"Failed processing pause indicator read request, FSUIPC returned: %u\n",nResult);
-		SyncDisconnect();		
-		return 0;
-	}
-	
-	*bPaused = bPausedTemp;
-	
-	return 1;
-}
-
-int SyncGetSimRate(DWORD* SimRate) {
-	DWORD nResult;
-	short SimRateTemp;
-		
-	if(!SyncConStatus) {
-		debuglog(DEBUG_ERROR,"Called although simulator isn't connected!\n");
-		return 0;
-	}
-	
-	if(SimRate == NULL) {
-		debuglog(DEBUG_ERROR,"NULL Pointer!\n");
 		return 0;
 	}
 	
@@ -271,14 +250,46 @@ int SyncGetSimRate(DWORD* SimRate) {
 		SyncDisconnect(); /* Disconnect for now */
 		return 0;
 	}
-		
+	
+	/* Use best way of determining if simulator in flight. also controllable by a variable to the user */	
+	if((FSMenuDetection == 1 && (SyncGetSimVersion() == SIM_FS2K4 || SyncGetSimVersion() == SIM_FSX)) || FSMenuDetection == 2) {
+		if(!FSUIPC_Read(0x3364,1,&ReadyToFly,&nResult)) {
+			debuglog(DEBUG_ERROR,"Failed reading FS2004 Ready To Fly flag from FS, FSUIPC returned: %u\n",nResult);
+			SyncDisconnect(); /* Disconnect for now */
+			return 0;
+		}
+	}
+	
+	if(!FSUIPC_Read(0x3365,1,&InFlight,&nResult)) {
+		debuglog(DEBUG_ERROR,"Failed reading in menu or dialog flag from FS, FSUIPC returned: %u\n",nResult);
+		SyncDisconnect(); /* Disconnect for now */
+		return 0;
+	}	
+	
 	if(!FSUIPC_Process(&nResult)) {
-		debuglog(DEBUG_ERROR,"Failed processing simulation rate read request, FSUIPC returned: %u\n",nResult);
+		debuglog(DEBUG_ERROR,"Failed processing state read requests, FSUIPC returned: %u\n",nResult);
 		SyncDisconnect();		
 		return 0;
 	}
 	
-	*SimRate = SimRateTemp;
+	/* Use best way of determining if simulator in flight. also controllable by a variable to the user */
+	if((FSMenuDetection == 1 && (SyncGetSimVersion() == SIM_FS2K4 || SyncGetSimVersion() == SIM_FSX)) || FSMenuDetection == 2) {
+		if(!ReadyToFly && !InFlight)
+			InFlightTemp = 1;
+		else
+			InFlightTemp = 0;
+	} else {
+		if(!InFlight)
+			InFlightTemp = 1;
+		else
+			InFlightTemp = 0;
+	}
+	
+	/* Assign the values into the real structure */
+	StateDest->SimPaused = SimPausedTemp;
+	StateDest->SimRate = SimRateTemp;
+	StateDest->SimInFlight = InFlightTemp;
+	
 	
 	return 1;
 }
